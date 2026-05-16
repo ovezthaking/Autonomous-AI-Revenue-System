@@ -51,3 +51,13 @@ Warstwa infrastruktury komunikuje się z zewnętrznymi API: media społeczności
 Architektura ma kluczowy element: slot na pluginy - każdy nowy strumień przychodów, który chcemy dodać, wdrażany jest jako osobny kontener i podpinany do orchestratora przez wspólny interfejs. Bez potrzeby przebudowywania systemu.
 
 Przepływ akceptacji (HITL) jest globalny i dotyczy każdego etapu: agent proponuje akcję, następnie orchestrator wysyła powiadomienie, człowiek zatwierdza lub odrzuca, a agent wykonuje lub wstrzymuje działanie w zależności od decyzji. Bez zgody człowieka, żadne treści nie są publikowane.
+
+
+**Planowany stack**:
+- Python (główny język programowania)
+- LangChain (orkiestracja agentów, zarządzanie ich pamięcią, budowanie narzędzi)
+- Ollama - lokalne modele LLM (np. LLama 3 / Mistral) - opcjonalnie Claude API do zadań wymagających większej jakości
+- FastAPI - backend i endpointy dla panelu HITL i webhooków Discord/Slack
+- PostgreSQL - Zapis profili programów partnerskich, historii wygenerowanych artykułów, publikacji oraz stanu pracy agentów.
+- Redis + Celery - FastAPI zleca zadanie do Redis, a Celery wykona je w tle, dzięki czemu system nie będzie blokowany podczas oczekiwania na odpowiedzi z zewnętrznych API lub generowania treści.
+- Docker Compose - Każdy agent i mikroserwis działa w osobnym kontenerze, co ułatwia skalowanie i zarządzanie.
