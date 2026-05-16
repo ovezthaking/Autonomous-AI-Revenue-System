@@ -8,7 +8,7 @@ Cel: $40k-$50k miesięcznie z samego affiliate marketingu, z kolejnymi strumieni
 
 Projekt zakłada 3 etapy wdrożenia, z których pierwzszy skupia się na zautomatyzowaniu affiliate marketingu, drugi dodaje e-booki, a trzeci sklep cyfrowy, np. Shopify.
 
-<div style="margin-top: 40px;"></div>
+<div style="margin-top: 60px;"></div>
 
 # Wymagania funkcjonalne
 
@@ -29,7 +29,7 @@ Projekt zakłada 3 etapy wdrożenia, z których pierwzszy skupia się na zautoma
 System musi zawierać prosty panel lub system powiadomień (Slack/Discord), który umożliwia ręczne zatwierdzanie rekomendacji agenta. Agenci muszą dostarczyć produkt, który jest gotowy do publikacji, ale człowiek musi zweryfikować i zatwierdzić nowe programy, e-booki oraz nowe produkty przed ich publikacją.
 
 
-<div style="margin-top: 40px;"></div>
+<div style="margin-top: 60px;"></div>
 
 
 # Rozwiązanie i architektura
