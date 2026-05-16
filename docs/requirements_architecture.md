@@ -10,8 +10,6 @@ Projekt zakłada 3 etapy wdrożenia, z których pierwzszy skupia się na zautoma
 
 <div style="margin-top: 60px;"></div>
 
-
-
 # Wymagania funkcjonalne
 
 ## Etap 1: Automatyzacja Affiliate Marketingu
