@@ -61,3 +61,6 @@ Przepływ akceptacji (HITL) jest globalny i dotyczy każdego etapu: agent propon
 - PostgreSQL - Zapis profili programów partnerskich, historii wygenerowanych artykułów, publikacji oraz stanu pracy agentów.
 - Redis + Celery - FastAPI zleca zadanie do Redis, a Celery wykona je w tle, dzięki czemu system nie będzie blokowany podczas oczekiwania na odpowiedzi z zewnętrznych API lub generowania treści.
 - Docker Compose - Każdy agent i mikroserwis działa w osobnym kontenerze, co ułatwia skalowanie i zarządzanie.
+
+**Dodatkowo**:
+- Frontend - Next.js + Tailwind CSS + shadcn/ui - prosty interfejs do przeglądania rekomendacji, historii publikacji, ręcznego zatwierdzania, monitorowania stanu systemów, pracy agentów i zarządzania treściami.
