@@ -11,3 +11,24 @@ dependencies = [
 dev = [
     "ruff>=0.16.4",
 ]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["app"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle
+    "F",  # pyflakes
+    "I",  # isort
+    "UP", # pyupgrade
+    "B",  # bugbear
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
