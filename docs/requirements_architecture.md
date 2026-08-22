@@ -59,6 +59,7 @@ Przepływ akceptacji (HITL) jest globalny i dotyczy każdego etapu: agent propon
 - Ollama - lokalne modele LLM (np. LLama 3 / Mistral) - opcjonalnie Claude API do zadań wymagających większej jakości
 - FastAPI - backend i endpointy dla panelu HITL i webhooków Discord/Slack
 - PostgreSQL - Zapis profili programów partnerskich, historii wygenerowanych artykułów, publikacji oraz stanu pracy agentów.
+- Alembic - Wersjonowanie i wykonywanie migracji schematu PostgreSQL wraz z rozwojem modeli danych.
 - Redis + Celery - FastAPI zleca zadanie do Redis, a Celery wykona je w tle, dzięki czemu system nie będzie blokowany podczas oczekiwania na odpowiedzi z zewnętrznych API lub generowania treści.
 - Docker Compose - Każdy agent i mikroserwis działa w osobnym kontenerze, co ułatwia skalowanie i zarządzanie.
 
