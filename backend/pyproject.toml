@@ -24,6 +24,7 @@ package = false
 target-version = "py312"
 line-length = 79
 src = ["app"]
+extend-exclude = ["alembic/versions/*"]
 
 [tool.ruff.lint]
 select = [
