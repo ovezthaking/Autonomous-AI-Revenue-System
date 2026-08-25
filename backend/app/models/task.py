@@ -1,9 +1,9 @@
-import uuid
 import datetime
+import uuid
 
 from sqlalchemy import DateTime, Text
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
 
@@ -22,32 +22,19 @@ class AgentTask(Base):
         nullable=False,
     )
 
-    status: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        default="queued"
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="queued")
 
-    input: Mapped[dict] = mapped_column(
-        JSONB,
-        nullable=False
-    )
+    input: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
-    output: Mapped[dict] = mapped_column(
-        JSONB,
-        nullable=True
-    )
+    output: Mapped[dict] = mapped_column(JSONB, nullable=True)
 
-    error: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True
-    )
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=datetime.now(datetime.timezone.utc),
-        default=datetime.now(datetime.timezone.utc)
+        server_default=datetime.now(datetime.UTC),
+        default=datetime.now(datetime.UTC),
     )
 
     started_at: Mapped[datetime.datetime] = mapped_column(

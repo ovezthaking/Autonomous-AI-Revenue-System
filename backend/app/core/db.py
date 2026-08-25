@@ -1,24 +1,10 @@
-import os
-
+from backend.app.core.config import DATABASE_URL
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://USER:PASS@HOST:5432/DB "
-)
-
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True
-)
-
-SessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False
-)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 class Base(DeclarativeBase):
