@@ -1,7 +1,7 @@
-import datetime
 import uuid
+from datetime import datetime
 
-from sqlalchemy import DateTime, Text
+from sqlalchemy import DateTime, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,8 +33,7 @@ class AgentTask(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=datetime.now(datetime.UTC),
-        default=datetime.now(datetime.UTC),
+        server_default=func.now(),
     )
 
     started_at: Mapped[datetime.datetime] = mapped_column(
