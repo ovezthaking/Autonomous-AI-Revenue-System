@@ -1,7 +1,6 @@
 import httpx
 
-from backend.app.core.config import LLM_STUB, OLLAMA_BASE_URL, OLLAMA_MODEL
-
+from app.core.config import LLM_STUB, OLLAMA_BASE_URL, OLLAMA_MODEL
 
 STUB_TEXT = (
     "This is a stub paragraph. LLM_STUB=1; no model was called. "
