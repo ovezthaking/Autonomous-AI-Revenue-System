@@ -17,3 +17,5 @@ REDIS_URL = getenv("REDIS_URL", "redis://localhost:6379/0")
 LLM_STUB = getenv("LLM_STUB", "1") == "1"
 OLLAMA_BASE_URL = getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = getenv("OLLAMA_MODEL", "llama3.2:1b")
+
+HITL_ACTOR = getenv("HITL_ACTOR", "operator")
