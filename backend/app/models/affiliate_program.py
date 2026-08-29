@@ -21,7 +21,7 @@ class AffiliateProgram(Base):
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
     rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
     extras: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    status = Mapped[str] = mapped_column(
+    status: Mapped[str] = mapped_column(
         Text,
         nullable=False,
         default=ProgramStatus.PROPOSED.value,

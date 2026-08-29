@@ -1,4 +1,4 @@
-from enums import StrEnum
+from enum import StrEnum
 
 
 class ProgramStatus(StrEnum):
