@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-class RecomendationCreate(BaseModel):
+class RecommendationCreate(BaseModel):
     name: str = Field(min_length=1, max_length=500)
     url: str | None = None
     network: str | None = None
