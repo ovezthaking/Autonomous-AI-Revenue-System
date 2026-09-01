@@ -1,7 +1,7 @@
-from typing import Annotated
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -55,7 +55,7 @@ def list_recommendations(
 def get_recommendation(
     program_id: uuid.UUID, db: DbSession
 ) -> AffiliateProgram:
-    from fastapi import HTTPException, status
+    from fastapi import status
 
     row = db.get(AffiliateProgram, program_id)
     if row is None:
@@ -67,9 +67,7 @@ def get_recommendation(
 
 @router.post("/{program_id}/approve", response_model=RecommendationRead)
 def approve_recommendation(
-    program_id: uuid.UUID,
-    db: DbSession,
-    body: HitlAction | None = None
+    program_id: uuid.UUID, db: DbSession, body: HitlAction | None = None
 ) -> AffiliateProgram:
     comment = body.comment if body else None
     return decide_program(db, program_id, HitlDecisionValue.APPROVED, comment)
@@ -77,9 +75,7 @@ def approve_recommendation(
 
 @router.post("{program_id}/reject", response_model=RecommendationRead)
 def reject_recommendation(
-    program_id: uuid.UUID,
-    db: DbSession,
-    body: HitlAction | None = None
+    program_id: uuid.UUID, db: DbSession, body: HitlAction | None = None
 ) -> AffiliateProgram:
     comment = body.comment if body else None
     return decide_program(db, program_id, HitlDecisionValue.REJECTED, comment)
