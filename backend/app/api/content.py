@@ -13,6 +13,6 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("", response_model=list[ContentItemRead])
-def list_content(db: DbSession) -> list(ContentItem):
+def list_content(db: DbSession) -> list[ContentItem]:
     stmt = select(ContentItem).order_by(ContentItem.created_at.desc())
     return list(db.scalars(stmt).all())

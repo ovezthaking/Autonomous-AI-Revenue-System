@@ -30,18 +30,18 @@ class AgentTask(Base):
 
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime.datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
     )
 
-    started_at: Mapped[datetime.datetime] = mapped_column(
+    started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
-    finished_at: Mapped[datetime.datetime] = mapped_column(
+    finished_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )

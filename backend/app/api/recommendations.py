@@ -42,7 +42,7 @@ def create_recommendation(
 def list_recommendations(
     db: DbSession,
     status_filter: str | None = Query(default="proposed", alias="status"),
-) -> list(AffiliateProgram):
+) -> list[AffiliateProgram]:
     stmt = select(AffiliateProgram).order_by(
         AffiliateProgram.created_at.desc()
     )
