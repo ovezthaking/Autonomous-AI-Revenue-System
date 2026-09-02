@@ -73,7 +73,7 @@ def approve_recommendation(
     return decide_program(db, program_id, HitlDecisionValue.APPROVED, comment)
 
 
-@router.post("{program_id}/reject", response_model=RecommendationRead)
+@router.post("/{program_id}/reject", response_model=RecommendationRead)
 def reject_recommendation(
     program_id: uuid.UUID, db: DbSession, body: HitlAction | None = None
 ) -> AffiliateProgram:
