@@ -26,7 +26,7 @@ class AffiliateProgram(Base):
         nullable=False,
         default=ProgramStatus.PROPOSED.value,
     )
-    source_taask_id: Mapped[uuid.UUID | None] = mapped_column(
+    source_task_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("agent_tasks.id"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(

@@ -25,7 +25,7 @@ class RecommendationRead(BaseModel):
     network: str | None
     category: str | None
     rationale: str | None
-    extras: dict[str, Any] = None
+    extras: dict[str, Any] | None
     status: str
     source_task_id: uuid.UUID | None
     created_at: datetime

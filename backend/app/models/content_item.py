@@ -20,7 +20,7 @@ class ContentItem(Base):
     affiliate_program_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("affiliate_programs.id"), nullable=True
     )
-    title: Mapped[str] = (mapped_column(Text, nullable=False),)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
     channel: Mapped[str] = mapped_column(Text, nullable=False, default="blog")
     status: Mapped[str] = mapped_column(
