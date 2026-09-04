@@ -21,7 +21,7 @@ def _get_program(db: Session, program_id: uuid.UUID) -> AffiliateProgram:
 def decide_program(
     db: Session,
     program_id: uuid.UUID,
-    decision: HitlDecision,
+    decision: HitlDecisionValue,
     comment: str | None,
 ) -> AffiliateProgram:
     row = _get_program(db=db, program_id=program_id)
