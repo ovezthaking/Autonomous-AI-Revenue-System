@@ -7,6 +7,7 @@ from app.core.config import HITL_ACTOR
 from app.core.enums import HitlDecisionValue, HitlEntityType, ProgramStatus
 from app.models.affiliate_program import AffiliateProgram
 from app.models.hitl_decision import HitlDecision
+from app.services.webhook import notify_hitl_decision
 
 
 def _get_program(db: Session, program_id: uuid.UUID) -> AffiliateProgram:
@@ -47,4 +48,7 @@ def decide_program(
     )
     db.commit()
     db.refresh(row)
+
+    notify_hitl_decision(row)
+
     return row
