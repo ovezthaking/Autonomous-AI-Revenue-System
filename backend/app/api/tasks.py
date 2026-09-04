@@ -1,7 +1,8 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
@@ -27,6 +28,15 @@ def create_task(body: TaskCreate, db: DbSession) -> AgentTask:
     db.refresh(row)
     generate_paragraph_task.delay(str(row.id))
     return row
+
+
+@router.get("", response_model=list[TaskRead])
+def list_tasks(
+    db: DbSession,
+    limit: int = Query(default=5, ge=1, le=50),
+) -> list[AgentTask]:
+    stmt = select(AgentTask).order_by(AgentTask.created_at.desc()).limit(limit)
+    return list(db.scalars(stmt).all())
 
 
 @router.get("/{task_id}", response_model=TaskRead)
