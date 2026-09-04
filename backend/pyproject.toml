@@ -15,8 +15,20 @@ dependencies = [
 [dependency-groups]
 dev = [
     "bandit>=1.9.4",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.4",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+markers = [
+    "integration: requires a live Postgres instance (see tests/conftest.py)",
+]
+addopts = "-ra --strict-markers --cov=app --cov-report=term-missing"
 
 [tool.uv]
 package = false
