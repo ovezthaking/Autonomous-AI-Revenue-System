@@ -19,3 +19,8 @@ OLLAMA_BASE_URL = getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = getenv("OLLAMA_MODEL", "llama3.2:1b")
 
 HITL_ACTOR = getenv("HITL_ACTOR", "operator")
+
+CORS_ORIGINS = getenv("CORS_ORIGINS", "http://localhost:3000")
+DASHBOARD_URL = getenv("DASHBOARD_URL", "http://localhost:3000")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "") or ""
+WEBHOOK_KIND = os.getenv("WEBHOOK_KIND", "discord")  # slack | discord
