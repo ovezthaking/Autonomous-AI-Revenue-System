@@ -44,6 +44,12 @@ export default function DashboardPage() {
     };
 
     init();
+
+    const intervalId = setInterval(() => {
+      reload().catch((e: Error) => console.error("Auto-refresh failed: ", e));
+    }, 5000);
+
+    return () => clearInterval(intervalId);
   }, [reload]);
 
   async function onDecide(id: string, action: "approve" | "reject") {
