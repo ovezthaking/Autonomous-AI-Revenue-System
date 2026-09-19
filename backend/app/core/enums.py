@@ -22,3 +22,8 @@ class HitlDecisionValue(StrEnum):
 class HitlEntityType(StrEnum):
     AFFILIATE_PROGRAM = "affiliate_program"
     CONTENT_ITEM = "content_item"
+
+
+class TaskType(StrEnum):
+    GENERATE_PARAGRAPH = "generate_paragraph"
+    RESEARCH_PROGRAMS = "research_programs"

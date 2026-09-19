@@ -9,4 +9,9 @@ if [ "$1" = "worker" ]; then
     exec celery -A app.workers.celery_app worker --loglevel=info
 fi
 
+if [ "$1" = "worker-research" ]; then
+    exec celery -A app.workers.celery_app worker \
+        --queues=research --concurrency=1 --loglevel=info
+fi
+
 exec "$@"
