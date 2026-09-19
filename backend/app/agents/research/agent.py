@@ -47,7 +47,7 @@ def discover_programs(
             name=candidate.name,
             category=candidate.category,
             network=candidate.network,
-            comission=candidate.commission,
+            commission=candidate.commission,
         )
         row = AffiliateProgram(
             name=candidate.name,
