@@ -82,6 +82,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
   
+  research-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    command: ["worker-research"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+  
   frontend:
     build:
       context: ./frontend
