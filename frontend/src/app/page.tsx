@@ -6,10 +6,12 @@ import {
   fetchContent,
   fetchRecentTasks,
   fetchRecommendations,
+  runResearch,
   type AgentTask,
   type ContentItem,
   type Recommendation,
 } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 function taskLabel(tasks: AgentTask[]): string {
   if (tasks.length === 0) return "idle";
@@ -22,6 +24,7 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [running, setRunning] = useState<boolean>(false);
 
   const reload = useCallback(async () => {
     const [r, c, t] = await Promise.all([
@@ -52,7 +55,7 @@ export default function DashboardPage() {
     return () => clearInterval(intervalId);
   }, [reload]);
 
-  async function onDecide(id: string, action: "approve" | "reject") {
+  const onDecide = async (id: string, action: "approve" | "reject") => {
     setBusyId(id);
     setError(null);
     try {
@@ -63,7 +66,20 @@ export default function DashboardPage() {
     } finally {
       setBusyId(null);
     }
-  }
+  };
+
+  const onRunResearch = async () => {
+    setRunning(true);
+    setError(null);
+    try {
+      await runResearch(5);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "research failed");
+    } finally {
+      setRunning(false);
+    }
+  };
 
   return (
     <main className="mx-auto max-w-3xl space-y-10 p-8">
@@ -125,6 +141,12 @@ export default function DashboardPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section>
+        <Button type="button" disabled={running} onClick={onRunResearch}>
+          {running ? "Running research..." : "Run research"}
+        </Button>
       </section>
     </main>
   );

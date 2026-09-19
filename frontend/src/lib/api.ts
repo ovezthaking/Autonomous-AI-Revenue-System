@@ -71,3 +71,12 @@ export const decide = async (
   });
   return parse<Recommendation>(res);
 };
+
+export const runResearch = async (limit = 5): Promise<AgentTask> => {
+  const res = await fetch(`${API}/research/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ limit }),
+  });
+  return parse<AgentTask>(res);
+};
