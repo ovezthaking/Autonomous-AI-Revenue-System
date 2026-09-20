@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class TaskCreate(BaseModel):
     prompt: str = Field(
-        default="Write one short paragraph about a"
+        default="Write one short paragraph about a "
         "walking skeleton architecture.",
         min_length=1,
     )

@@ -4,7 +4,7 @@ import os
 def getenv(name: str, default: str | None = None) -> str:
     value = os.getenv(name, default)
     if value is None:
-        msg = f"Missing required environmentvariable: {name}"
+        msg = f"Missing required environment variable: {name}"
         raise RuntimeError(msg)
     return value
 
