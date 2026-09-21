@@ -17,6 +17,7 @@ class AffiliateProgram(Base):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    affiliate_link: Mapped[str | None] = mapped_column(Text, nullable=True)
     network: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
     rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
