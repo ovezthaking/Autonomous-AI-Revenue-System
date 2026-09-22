@@ -12,6 +12,12 @@ class ContentStatus(StrEnum):
     APPROVED = "approved"
     SCHEDULED = "scheduled"
     PUBLISHED = "published"
+    REJECTED = "rejected"
+
+
+class ContentChannel:
+    BLOG = "blog"
+    SOCIAL = "social"
 
 
 class HitlDecisionValue(StrEnum):

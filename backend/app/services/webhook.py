@@ -3,15 +3,14 @@ import logging
 import httpx
 
 from app.core.config import DASHBOARD_URL, WEBHOOK_KIND, WEBHOOK_URL
-from app.models.affiliate_program import AffiliateProgram
 
 logger = logging.getLogger(__name__)
 
 
-def notify_hitl_decision(row: AffiliateProgram) -> None:
+def notify_hitl_decision(label: str, entity_status: str) -> None:
     if not WEBHOOK_URL:
         return
-    text = f"HITL: *{row.name}* -> `{row.status}`\n{DASHBOARD_URL}"
+    text = f"HITL: *{label}* -> `{entity_status}`\n{DASHBOARD_URL}"
     if WEBHOOK_KIND == "discord":
         payload = {"content": text.replace("*", "**")}
     else:

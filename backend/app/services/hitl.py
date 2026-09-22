@@ -4,8 +4,14 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import HITL_ACTOR
-from app.core.enums import HitlDecisionValue, HitlEntityType, ProgramStatus
+from app.core.enums import (
+    ContentStatus,
+    HitlDecisionValue,
+    HitlEntityType,
+    ProgramStatus,
+)
 from app.models.affiliate_program import AffiliateProgram
+from app.models.content_item import ContentItem
 from app.models.hitl_decision import HitlDecision
 from app.services.webhook import notify_hitl_decision
 
@@ -17,6 +23,24 @@ def _get_program(db: Session, program_id: uuid.UUID) -> AffiliateProgram:
             status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
         )
     return row
+
+
+def _record_decision(
+    db: Session,
+    entity_type: HitlEntityType,
+    entity_id: uuid.UUID,
+    decision: HitlDecisionValue,
+    comment: str | None,
+) -> None:
+    db.add(
+        HitlDecision(
+            entity_type=entity_type.value,
+            entity_id=entity_id,
+            decision=decision.value,
+            actor=HITL_ACTOR,
+            comment=comment,
+        )
+    )
 
 
 def decide_program(
@@ -37,18 +61,42 @@ def decide_program(
         else ProgramStatus.REJECTED.value
     )
     row.status = new_status
-    db.add(
-        HitlDecision(
-            entity_type=HitlEntityType.AFFILIATE_PROGRAM.value,
-            entity_id=row.id,
-            decision=decision.value,
-            actor=HITL_ACTOR,
-            comment=comment,
-        )
+    _record_decision(
+        db, HitlEntityType.AFFILIATE_PROGRAM, row.id, decision, comment
     )
     db.commit()
     db.refresh(row)
 
-    notify_hitl_decision(row)
+    notify_hitl_decision(row.name, row.status)
 
+    return row
+
+
+def decide_content(
+    db: Session,
+    content_id: uuid.UUID,
+    decision: HitlDecisionValue,
+    comment: str | None,
+) -> ContentItem:
+    row = db.get(ContentItem, content_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+    if row.status != ContentStatus.DRAFT.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Content already {row.status}",
+        )
+    row.status = (
+        ContentStatus.APPROVED.value
+        if decision is HitlDecisionValue.APPROVED
+        else ContentStatus.REJECTED.value
+    )
+    _record_decision(
+        db, HitlEntityType.CONTENT_ITEM, row.id, decision, comment
+    )
+    db.commit()
+    db.refresh(row)
+    notify_hitl_decision(row.title, row.status)
     return row
