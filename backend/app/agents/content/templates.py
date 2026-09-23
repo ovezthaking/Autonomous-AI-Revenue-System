@@ -27,7 +27,7 @@ def render_blog(body: str, name: str, link: str) -> str:
     return BLOG_BODY.format(body=body.strip(), name=name, link=link)
 
 
-def render_socia(body: str, link: str) -> str:
+def render_social(body: str, link: str) -> str:
     trimmed = body.strip()
     if len(trimmed) > 240:
         trimmed = trimmed[:237].rstrip() + "..."
