@@ -14,6 +14,14 @@ STUB_RATIONALE = (
 )
 
 
+def chat(prompt: str, temperature: float = 0.2) -> str:
+    model = ChatOllama(
+        model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL, temperature=temperature
+    )
+    message = model.invoke(prompt)
+    return str(message.content).strip()
+
+
 def generate_paragraph(prompt: str) -> str:
     if LLM_STUB:
         return STUB_TEXT
@@ -32,8 +40,10 @@ def generate_paragraph(prompt: str) -> str:
 def generate_rationale(prompt: str) -> str:
     if LLM_STUB:
         return STUB_RATIONALE
-    model = ChatOllama(
-        model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL, temperature=0.2
-    )
-    message = model.invoke(prompt)
-    return str(message.content).strip()
+    return chat(prompt, temperature=0.2)
+
+
+def generate_copy(prompt: str, *, stub: str) -> str:
+    if LLM_STUB:
+        return stub
+    return chat(prompt, temperature=0.5)
