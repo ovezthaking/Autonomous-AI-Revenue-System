@@ -32,3 +32,7 @@ class RecommendationRead(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class AffiliateLinkUpdate(BaseModel):
+    affiliate_link: str = Field(min_length=8, max_length=2000)

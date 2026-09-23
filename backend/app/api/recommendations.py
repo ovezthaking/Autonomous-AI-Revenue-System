@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from app.core.db import get_db
 from app.core.enums import HitlDecisionValue, ProgramStatus
 from app.models.affiliate_program import AffiliateProgram
 from app.schemas.affiliate_program import (
+    AffiliateLinkUpdate,
     HitlAction,
     RecommendationCreate,
     RecommendationRead,
@@ -79,3 +80,25 @@ def reject_recommendation(
 ) -> AffiliateProgram:
     comment = body.comment if body else None
     return decide_program(db, program_id, HitlDecisionValue.REJECTED, comment)
+
+
+@router.patch(
+    "/{program_id}/affiliate-link", response_model=RecommendationRead
+)
+def set_affiliate_link(
+    program_id: uuid.UUID, body: AffiliateLinkUpdate, db: DbSession
+) -> AffiliateProgram:
+    row = db.get(AffiliateProgram, program_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+    if row.status != ProgramStatus.APPROVED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Affiliate link can only be set on approved programs",
+        )
+    row.affiliate_link = body.affiliate_link
+    db.commit()
+    db.refresh(row)
+    return row
