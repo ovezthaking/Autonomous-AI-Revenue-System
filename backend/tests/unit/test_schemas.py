@@ -1,9 +1,13 @@
+import uuid
+from datetime import UTC, datetime
+
 import pytest
 from app.schemas.affiliate_program import (
     HitlAction,
     RecommendationCreate,
     RecommendationRead,
 )
+from app.schemas.content_item import ContentItemRead
 from app.schemas.task import TaskCreate
 from pydantic import ValidationError
 
@@ -39,6 +43,29 @@ def test_recommendation_create_accepts_full_payload():
 
 def test_recommendation_read_exposes_affiliate_link():
     assert "affiliate_link" in RecommendationRead.model_fields
+
+
+def test_content_item_read_accepts_operational_fields():
+    now = datetime.now(UTC)
+    item = ContentItemRead(
+        id=uuid.uuid4(),
+        affiliate_program_id=None,
+        title="Review",
+        body="Body",
+        channel="blog",
+        status="draft",
+        source_task_id=None,
+        extras={"generated_by": "content_agent_v1"},
+        scheduled_for=None,
+        published_at=None,
+        updated_at=now,
+        created_at=now,
+    )
+    assert item.source_task_id is None
+    assert item.extras == {"generated_by": "content_agent_v1"}
+    assert item.scheduled_for is None
+    assert item.published_at is None
+    assert item.updated_at == now
 
 
 def test_hitl_action_comment_is_optional():

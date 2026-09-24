@@ -27,3 +27,25 @@ def test_list_content_returns_items_newest_first(client, make_content_item):
     assert response.status_code == 200
     titles = [row["title"] for row in response.json()]
     assert titles.index(newer.title) < titles.index(older.title)
+
+
+def test_list_content_defaults_to_every_status(client, make_content_item):
+    draft = make_content_item(title="Draft post", status="draft")
+    published = make_content_item(title="Live post", status="published")
+
+    response = client.get("/content")
+
+    assert response.status_code == 200
+    titles = {row["title"] for row in response.json()}
+    assert draft.title in titles
+    assert published.title in titles
+
+
+def test_list_content_filters_by_status(client, make_content_item):
+    draft = make_content_item(title="Draft post", status="draft")
+    make_content_item(title="Live post", status="published")
+
+    response = client.get("/content", params={"status": "draft"})
+
+    assert response.status_code == 200
+    assert [row["title"] for row in response.json()] == [draft.title]
