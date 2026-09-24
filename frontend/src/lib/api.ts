@@ -4,6 +4,7 @@ export type Recommendation = {
   id: string;
   name: string;
   url: string | null;
+  affiliate_link: string | null;
   network: string | null;
   category: string | null;
   rationale: string | null;
@@ -15,10 +16,13 @@ export type Recommendation = {
 
 export type ContentItem = {
   id: string;
+  affiliate_program_id: string | null;
   title: string;
   body: string;
   channel: string;
   status: string;
+  scheduled_for: string | null;
+  published_at: string | null;
   created_at: string;
 };
 
@@ -79,4 +83,48 @@ export const runResearch = async (limit = 5): Promise<AgentTask> => {
     body: JSON.stringify({ limit }),
   });
   return parse<AgentTask>(res);
+};
+
+export const setAffiliateLink = async (id: string, link: string) => {
+  const res = await fetch(`${API}/recommendations/${id}/affiliate-link`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ affiliate_link: link }),
+  });
+  return parse<Recommendation>(res);
+};
+
+export const runContent = async (limit = 3) => {
+  const res = await fetch(`${API}/content/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ limit }),
+  });
+  return parse<AgentTask>(res);
+};
+
+export const decideContent = async (
+  id: string,
+  action: "approve" | "reject",
+) => {
+  const res = await fetch(`${API}/content/${id}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ comment: null }),
+  });
+  return parse<ContentItem>(res);
+};
+
+export const scheduleContent = async (id: string) => {
+  const res = await fetch(`${API}/content/${id}/schedule`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  return parse<ContentItem>(res);
+};
+
+export const publishDue = async () => {
+  const res = await fetch(`${API}/content/publish-due`, { method: "POST" });
+  return parse<{ status: string }>(res);
 };
