@@ -1,5 +1,9 @@
 import pytest
-from app.schemas.affiliate_program import HitlAction, RecommendationCreate
+from app.schemas.affiliate_program import (
+    HitlAction,
+    RecommendationCreate,
+    RecommendationRead,
+)
 from app.schemas.task import TaskCreate
 from pydantic import ValidationError
 
@@ -31,6 +35,10 @@ def test_recommendation_create_accepts_full_payload():
         extras={"epc": 4.2, "commission_pct": 30},
     )
     assert payload.extras == {"epc": 4.2, "commission_pct": 30}
+
+
+def test_recommendation_read_exposes_affiliate_link():
+    assert "affiliate_link" in RecommendationRead.model_fields
 
 
 def test_hitl_action_comment_is_optional():

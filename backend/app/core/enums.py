@@ -15,7 +15,7 @@ class ContentStatus(StrEnum):
     REJECTED = "rejected"
 
 
-class ContentChannel:
+class ContentChannel(StrEnum):
     BLOG = "blog"
     SOCIAL = "social"
 
@@ -33,3 +33,5 @@ class HitlEntityType(StrEnum):
 class TaskType(StrEnum):
     GENERATE_PARAGRAPH = "generate_paragraph"
     RESEARCH_PROGRAMS = "research_programs"
+    GENERATE_CONTENT = "generate_content"
+    PUBLISH_DUE = "publish_due"

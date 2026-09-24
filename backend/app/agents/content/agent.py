@@ -1,5 +1,8 @@
 import uuid
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.agents.content.templates import (
     BLOG_PROMPT,
     SOCIAL_PROMPT,
@@ -12,8 +15,6 @@ from app.core.enums import ContentChannel, ContentStatus, ProgramStatus
 from app.models.affiliate_program import AffiliateProgram
 from app.models.content_item import ContentItem
 from app.services.llm import generate_copy
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 
 def select_programs(db: Session, limit: int) -> list[AffiliateProgram]:
@@ -67,6 +68,7 @@ def _items_for(
             title=f"{program.name} - social post",
             body=render_social(social_body, link),
             channel=ContentChannel.SOCIAL.value,
+            **common,
         ),
     ]
 

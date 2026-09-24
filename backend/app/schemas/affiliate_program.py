@@ -22,6 +22,7 @@ class RecommendationRead(BaseModel):
     id: uuid.UUID
     name: str
     url: str | None
+    affiliate_link: str | None
     network: str | None
     category: str | None
     rationale: str | None

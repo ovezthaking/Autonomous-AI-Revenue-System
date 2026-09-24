@@ -8,10 +8,12 @@ any other signal. These tests are a cheap safety net for such a case.
 """
 
 from app.core.enums import (
+    ContentChannel,
     ContentStatus,
     HitlDecisionValue,
     HitlEntityType,
     ProgramStatus,
+    TaskType,
 )
 
 
@@ -26,6 +28,16 @@ def test_content_status_values():
     assert ContentStatus.APPROVED.value == "approved"
     assert ContentStatus.SCHEDULED.value == "scheduled"
     assert ContentStatus.PUBLISHED.value == "published"
+
+
+def test_content_channel_values():
+    assert ContentChannel.BLOG.value == "blog"
+    assert ContentChannel.SOCIAL.value == "social"
+
+
+def test_task_type_includes_content_tasks():
+    assert TaskType.GENERATE_CONTENT.value == "generate_content"
+    assert TaskType.PUBLISH_DUE.value == "publish_due"
 
 
 def test_hitl_decision_value_values():
