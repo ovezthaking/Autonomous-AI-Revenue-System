@@ -1,6 +1,6 @@
 import uuid
 
-from backend.app.agents.content.templates import (
+from app.agents.content.templates import (
     BLOG_PROMPT,
     SOCIAL_PROMPT,
     STUB_BLOG,
@@ -8,10 +8,10 @@ from backend.app.agents.content.templates import (
     render_blog,
     render_social,
 )
-from backend.app.core.enums import ContentChannel, ContentStatus, ProgramStatus
-from backend.app.models.affiliate_program import AffiliateProgram
-from backend.app.models.content_item import ContentItem
-from backend.app.services.llm import generate_copy
+from app.core.enums import ContentChannel, ContentStatus, ProgramStatus
+from app.models.affiliate_program import AffiliateProgram
+from app.models.content_item import ContentItem
+from app.services.llm import generate_copy
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
