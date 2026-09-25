@@ -17,3 +17,10 @@ celery_app.conf.task_routes = {
     "content.generate": {"queue": "content"},
     "content.publish_due": {"queue": "content"},
 }
+celery_app.conf.beat_schedule = {
+    "publish-due-every-5-min": {
+        "task": "content.publish_due",
+        "schedule": 300.0
+    },
+}
+celery_app.conf.timezone = "UTC"

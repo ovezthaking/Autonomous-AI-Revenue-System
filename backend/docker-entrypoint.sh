@@ -19,4 +19,8 @@ if [ "$1" = "worker-content" ]; then
         --queues=content --concurrency=1 --loglevel=info
 fi
 
+if [ "$1" = "beat" ]; then
+    exec celery -A app.workers.celery_app beat --loglevel=info
+fi
+
 exec "$@"
