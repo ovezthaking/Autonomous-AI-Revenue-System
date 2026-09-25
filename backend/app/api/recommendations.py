@@ -56,8 +56,6 @@ def list_recommendations(
 def get_recommendation(
     program_id: uuid.UUID, db: DbSession
 ) -> AffiliateProgram:
-    from fastapi import status
-
     row = db.get(AffiliateProgram, program_id)
     if row is None:
         raise HTTPException(
