@@ -2,10 +2,14 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
-from app.core.enums import ContentStatus, HitlDecisionValue, HitlEntityType
-from app.models.content_item import ContentItem
 from app.services.hitl import decide_content
 from fastapi import HTTPException
+from revenue_swarm.enums import (
+    ContentStatus,
+    HitlDecisionValue,
+    HitlEntityType,
+)
+from revenue_swarm.models.content_item import ContentItem
 
 
 def _item(status: str) -> ContentItem:

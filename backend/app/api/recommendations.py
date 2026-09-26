@@ -2,12 +2,12 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from revenue_swarm.db import get_db
+from revenue_swarm.enums import HitlDecisionValue, ProgramStatus
+from revenue_swarm.models.affiliate_program import AffiliateProgram
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
-from app.core.enums import HitlDecisionValue, ProgramStatus
-from app.models.affiliate_program import AffiliateProgram
 from app.schemas.affiliate_program import (
     AffiliateLinkUpdate,
     HitlAction,

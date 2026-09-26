@@ -41,8 +41,8 @@ services:
   
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     env_file:
       - .env
     ports:
@@ -68,8 +68,8 @@ services:
   
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     env_file:
       - .env
     command: ["worker"]
@@ -84,11 +84,10 @@ services:
   
   research-worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: agents/research/Dockerfile
     env_file:
       - .env
-    command: ["worker-research"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,11 +99,10 @@ services:
   
   content-worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: agents/content/Dockerfile
     env_file:
       - .env
-    command: ["worker-content"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -116,11 +114,18 @@ services:
   
   beat:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: agents/content/Dockerfile
     env_file:
       - .env
-    command: ["beat"]
+    command:
+      [
+        "celery",
+        "-A",
+        "content_agent.worker:celery_app",
+        "beat",
+        "--loglevel=info",
+      ]
     depends_on:
       postgres:
         condition: service_healthy

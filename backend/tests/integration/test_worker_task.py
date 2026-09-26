@@ -9,10 +9,10 @@ transactional `db_session`.
 
 import uuid
 
-import app.services.llm as llm_module
 import pytest
-from app.models.task import AgentTask
-from app.workers.tasks import generate_paragraph_task
+import revenue_swarm.llm as llm_module
+from app.workers.skeleton import generate_paragraph_task
+from revenue_swarm.models.task import AgentTask
 
 pytestmark = pytest.mark.integration
 
@@ -57,7 +57,7 @@ def test_task_marks_failure_and_reraises_on_llm_error(
     def _boom(prompt):
         raise RuntimeError("Ollama unavailable")
 
-    monkeypatch.setattr("app.workers.tasks.generate_paragraph", _boom)
+    monkeypatch.setattr("app.workers.skeleton.generate_paragraph", _boom)
 
     task = AgentTask(
         type="generate_paragraph", status="queued", input={"prompt": "x"}

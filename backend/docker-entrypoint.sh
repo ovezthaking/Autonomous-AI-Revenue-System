@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 if [ "$1" = "api" ]; then
     alembic upgrade head
@@ -6,21 +7,8 @@ if [ "$1" = "api" ]; then
 fi
 
 if [ "$1" = "worker" ]; then
-    exec celery -A app.workers.celery_app worker --loglevel=info
-fi
-
-if [ "$1" = "worker-research" ]; then
-    exec celery -A app.workers.celery_app worker \
-        --queues=research --concurrency=1 --loglevel=info
-fi
-
-if [ "$1" = "worker-content" ]; then
-    exec celery -A app.workers.celery_app worker \
-        --queues=content --concurrency=1 --loglevel=info
-fi
-
-if [ "$1" = "beat" ]; then
-    exec celery -A app.workers.celery_app beat --loglevel=info
+    exec celery -A app.workers.skeleton:celery_app worker \
+        --queues=celery --loglevel=info
 fi
 
 exec "$@"

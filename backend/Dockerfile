@@ -10,19 +10,23 @@ ENV UV_COMPILE_BYTECODE=1 \
     PATH="/app/.venv/bin:$PATH"
 
 COPY pyproject.toml uv.lock ./
+COPY shared/pyproject.toml shared/pyproject.toml
+COPY backend/pyproject.toml backend/pyproject.toml
+COPY agents/research/pyproject.toml agents/research/pyproject.toml
+COPY agents/content/pyproject.toml agents/content/pyproject.toml
+
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-workspace --package revenue-swarm-backend
 
-COPY app ./app
+COPY shared shared
+COPY backend backend
 
-COPY alembic.ini ./
-COPY alembic ./alembic
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --package revenue-swarm-backend
 
-COPY docker-entrypoint.sh ./
+WORKDIR /app/backend
 RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 8000
-
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-ENTRYPOINT [ "./docker-entrypoint.sh" ]
-CMD [ "api" ]
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["api"]

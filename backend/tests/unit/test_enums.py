@@ -7,7 +7,7 @@ the API contract (e.g., the `status` value visible through JSON) without
 any other signal. These tests are a cheap safety net for such a case.
 """
 
-from app.core.enums import (
+from revenue_swarm.enums import (
     ContentChannel,
     ContentStatus,
     HitlDecisionValue,

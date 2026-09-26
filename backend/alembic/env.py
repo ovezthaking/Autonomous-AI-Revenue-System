@@ -1,9 +1,9 @@
 from logging.config import fileConfig
 
-import app.models  # noqa: F401
+import revenue_swarm.models  # noqa: F401
 from alembic import context
-from app.core.config import DATABASE_URL
-from app.core.db import Base
+from revenue_swarm.config import DATABASE_URL
+from revenue_swarm.db import Base
 from sqlalchemy import engine_from_config, pool
 
 # this is the Alembic Config object, which provides

@@ -1,14 +1,15 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
+from revenue_swarm.celery import celery_app
+from revenue_swarm.db import get_db
+from revenue_swarm.enums import TaskType
+from revenue_swarm.models.task import AgentTask
+from revenue_swarm.tasks import TaskName
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
-from app.core.enums import TaskType
-from app.models.task import AgentTask
 from app.schemas.research import ResearchRunCreate
 from app.schemas.task import TaskRead
-from app.workers.research import discover_programs_task
 
 router = APIRouter(prefix="/research", tags=["research"])
 DBSession = Annotated[Session, Depends(get_db)]
@@ -29,5 +30,5 @@ def run_research(
     db.add(row)
     db.commit()
     db.refresh(row)
-    discover_programs_task.delay(str(row.id))
+    celery_app.send_task(TaskName.RESEARCH_DISCOVER, args=[str(row.id)])
     return row

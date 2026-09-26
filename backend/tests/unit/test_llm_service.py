@@ -4,9 +4,9 @@ LLM_STUB=1 branch is tested explicitly, and the "real" Ollama call branch
 is tested by mocking httpx.Client.post.
 """
 
-import app.services.llm as llm_module
 import httpx
 import pytest
+import revenue_swarm.llm as llm_module
 
 
 def test_generate_paragraph_returns_stub_when_llm_stub_enabled(monkeypatch):

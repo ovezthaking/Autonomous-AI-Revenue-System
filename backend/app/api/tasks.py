@@ -2,13 +2,14 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from revenue_swarm.celery import celery_app
+from revenue_swarm.db import get_db
+from revenue_swarm.models.task import AgentTask
+from revenue_swarm.tasks import TaskName
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
-from app.models.task import AgentTask
 from app.schemas.task import TaskCreate, TaskRead
-from app.workers.tasks import generate_paragraph_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -26,7 +27,7 @@ def create_task(body: TaskCreate, db: DbSession) -> AgentTask:
     db.add(row)
     db.commit()
     db.refresh(row)
-    generate_paragraph_task.delay(str(row.id))
+    celery_app.send_task(TaskName.GENERATE_PARAGRAPH, args=[str(row.id)])
     return row
 
 

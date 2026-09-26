@@ -1,7 +1,7 @@
 import uuid
 
 import pytest
-from app.core.enums import ProgramStatus
+from revenue_swarm.enums import ProgramStatus
 
 pytestmark = pytest.mark.integration
 

@@ -1,25 +1,8 @@
 from datetime import UTC, datetime, timedelta
 
-import app.api.content as content_api
 import pytest
 
 pytestmark = pytest.mark.integration
-
-
-@pytest.fixture(autouse=True)
-def no_celery_broker(monkeypatch):
-    """Replaces Celery .delay() so API tests do not need a live broker."""
-    calls = {"generate": [], "publish": []}
-
-    def _generate(task_id):
-        calls["generate"].append(task_id)
-
-    def _publish():
-        calls["publish"].append(True)
-
-    monkeypatch.setattr(content_api.generate_content_task, "delay", _generate)
-    monkeypatch.setattr(content_api.publish_due_task, "delay", _publish)
-    return calls
 
 
 def test_list_content_returns_empty_list_when_no_items(client):
@@ -75,7 +58,7 @@ def test_run_content_returns_202(client, no_celery_broker):
     body = response.json()
     assert body["type"] == "generate_content"
     assert body["status"] == "queued"
-    assert no_celery_broker["generate"] == [body["id"]]
+    assert no_celery_broker == [("content.generate", [body["id"]])]
 
 
 def test_approve_content_returns_200(client, make_content_item):
@@ -102,4 +85,4 @@ def test_publish_due_returns_202(client, no_celery_broker):
 
     assert response.status_code == 202
     assert response.json() == {"status": "queued"}
-    assert no_celery_broker["publish"] == [True]
+    assert no_celery_broker == [("content.publish_due", [])]

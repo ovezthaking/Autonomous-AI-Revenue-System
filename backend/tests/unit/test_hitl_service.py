@@ -10,10 +10,14 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
-from app.core.enums import HitlDecisionValue, HitlEntityType, ProgramStatus
-from app.models.affiliate_program import AffiliateProgram
 from app.services.hitl import decide_program
 from fastapi import HTTPException
+from revenue_swarm.enums import (
+    HitlDecisionValue,
+    HitlEntityType,
+    ProgramStatus,
+)
+from revenue_swarm.models.affiliate_program import AffiliateProgram
 
 
 def _program(status: str) -> AffiliateProgram:

@@ -3,13 +3,15 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from revenue_swarm.celery import celery_app
+from revenue_swarm.db import get_db
+from revenue_swarm.enums import ContentStatus, HitlDecisionValue, TaskType
+from revenue_swarm.models.content_item import ContentItem
+from revenue_swarm.models.task import AgentTask
+from revenue_swarm.tasks import TaskName
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
-from app.core.enums import ContentStatus, HitlDecisionValue, TaskType
-from app.models.content_item import ContentItem
-from app.models.task import AgentTask
 from app.schemas.affiliate_program import HitlAction
 from app.schemas.content_item import (
     ContentItemRead,
@@ -18,7 +20,6 @@ from app.schemas.content_item import (
 )
 from app.schemas.task import TaskRead
 from app.services.hitl import decide_content
-from app.workers.content import generate_content_task, publish_due_task
 
 router = APIRouter(prefix="/content", tags=["content"])
 DbSession = Annotated[Session, Depends(get_db)]
@@ -48,7 +49,7 @@ def run_content(db: DbSession, body: ContentRunCreate | None = None):
     db.add(row)
     db.commit()
     db.refresh(row)
-    generate_content_task.delay(str(row.id))
+    celery_app.send_task(TaskName.CONTENT_GENERATE, args=[str(row.id)])
     return row
 
 
@@ -103,5 +104,5 @@ def schedule_content(
 
 @router.post("/publish-due", status_code=status.HTTP_202_ACCEPTED)
 def publish_due() -> dict[str, str]:
-    publish_due_task.delay()
+    celery_app.send_task(TaskName.CONTENT_PUBLISH_DUE)
     return {"status": "queued"}
