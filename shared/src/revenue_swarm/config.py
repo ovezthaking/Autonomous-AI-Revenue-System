@@ -17,3 +17,6 @@ REDIS_URL = getenv("REDIS_URL", "redis://localhost:6379/0")
 LLM_STUB = getenv("LLM_STUB", "1") == "1"
 OLLAMA_BASE_URL = getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = getenv("OLLAMA_MODEL", "llama3.2:1b")
+LLM_PROVIDER = getenv("LLM_PROVIDER", "ollama")  # ollama | anthropic
+LLM_QUALITY_MODEL = getenv("LLM_QUALITY_MODEL", "claude-sonnet-4.5")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "") or ""
