@@ -3,7 +3,13 @@ name = "research-agent"
 version = "0.1.0"
 description = "Research agent: discovers affiliate programs"
 requires-python = ">=3.12"
-dependencies = ["revenue-swarm-shared"]
+dependencies = [
+    "httpx>=0.28.1",
+    "redis>=6.4.0",
+    "revenue-swarm-shared",
+    "selectolax>=0.4.12",
+    "tenacity>=9.1.4",
+]
 
 [tool.uv.sources]
 revenue-swarm-shared = { workspace = true }
