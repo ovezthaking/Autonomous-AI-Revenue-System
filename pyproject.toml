@@ -34,3 +34,13 @@ combine-as-imports = true
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = [
+    "shared/src",
+    "backend",
+    "agents/content/src",
+    "agents/research/src",
+]
