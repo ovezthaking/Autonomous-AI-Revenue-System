@@ -1,3 +1,76 @@
+[English](#english) · [Polski](#polski)
+
+<a id="english"></a>
+# Business Requirements
+## Project Goal
+The project addresses the need to build a passive, scalable revenue stream based on autonomous AI agents.
+
+Key problem: manual execution of affiliate marketing, e-book creation, and managing a digital store is time-consuming and unscalable.
+
+Goal: $40k-$50k monthly from affiliate marketing alone, with additional revenue streams layered on top.
+
+The project assumes 3 implementation stages, the first focusing on automating affiliate marketing, the second adding e-books, and the third a digital store, e.g., Shopify.
+
+<div style="margin-top: 60px;"></div>
+
+# Functional Requirements
+
+## Stage 1: Affiliate Marketing Automation
+1. **Research agent**: searches the web and selects 10-15 most profitable affiliate programs (looks for high-ticket services and subscription-based SaaS tools that pay monthly) based on the highest earnings per click (EPC) and the highest commission.
+2. **Recommendations dashboard**: presents the results of the research agent, enabling manual acceptance (Human in the Loop - HITL) of selected affiliate programs.
+3. **Content agent**: for approved programs, the agent automatically downloads the provided affiliate links, independently generates blog articles and social media posts, places the links within them, and publishes them automatically according to a set schedule.
+
+## Stage 2: E-books
+1. **E-book agent**: Analyzes trending topics, writes full e-books, and formats them.
+2. **Sales and payment integration agent**: Creates a simple online store to sell e-books, integrated with a payment system (e.g., Stripe).
+
+## Stage 3: Digital Store - Shopify
+1. **Trend prediction agent**: Analyzes market data and digital product trends.
+2. **Store management agent**: Generates product descriptions and lists them automatically on the Shopify platform.
+
+## Human in the Loop (HITL)
+The system must include a simple dashboard or notification system (Slack/Discord) that allows for manual approval of agent recommendations. Agents must deliver a product ready for publication, but a human must verify and approve new programs, e-books, and new products before they are published.
+
+<div style="margin-top: 60px;"></div>
+
+# Solution and Architecture
+The architecture will be based on LangChain, Ollama (local models), Python, and Docker Compose with separate containers responsible for specific functions.
+
+- **Orchestrator**: The main container built on LangChain, which receives tasks, decides which agent should execute them, and monitors the state of the entire system. Everything passes through it.
+Before anything is published, the orchestrator sends a notification requesting approval via Discord/Slack. Agents wait for the decision and do not proceed without it.
+
+Content creation and publication take place in three independent stages that run in parallel.
+
+- **Stage 1**: Affiliate Marketing has three components: a research agent (searches for the best affiliate programs), a content and publication agent (generates articles/posts and publishes them after approval), and a recommendations dashboard (presents selected programs for review before registration).
+- **Stage 2**: E-books: a topic research agent, an e-book writing and formatting agent, and a ready integration of a landing page and payment system (Stripe for automated sales and delivery).
+- **Stage 3**: Shopify: a digital product trend prediction agent, a product listing agent, and direct integration with the Shopify API.
+
+All three stages operate on a common infrastructure layer: Ollama with local models, PostgreSQL as the main database, Redis as a task queue and cache, all managed by Docker Compose and hosted 24/7 in the cloud.
+
+The infrastructure layer communicates with external APIs: social media, Stripe, Shopify API, affiliate networks, and web scraping tools.
+
+The architecture has a key element: a plugin slot - every new revenue stream we want to add is deployed as a separate container and connected to the orchestrator via a common interface. No need to rebuild the system.
+
+The approval flow (HITL) is global and applies to every stage: the agent proposes an action, then the orchestrator sends a notification, a human approves or rejects, and the agent executes or pauses the action depending on the decision. Without human consent, no content is published.
+
+**Planned stack**:
+- Python (main programming language)
+- LangChain (agent orchestration, memory management, tool building)
+- Ollama - local LLM models (e.g., Llama 3 / Mistral) - optionally Claude API for tasks requiring higher quality
+- FastAPI - backend and endpoints for the HITL dashboard and Discord/Slack webhooks
+- PostgreSQL - Storing affiliate program profiles, history of generated articles, publications, and the working state of agents.
+- Alembic - Versioning and executing PostgreSQL schema migrations as data models evolve.
+- Redis + Celery - FastAPI delegates tasks to Redis, and Celery executes them in the background, ensuring the system is not blocked while waiting for responses from external APIs or generating content.
+- Docker Compose - Each agent and microservice runs in a separate container, facilitating scaling and management.
+
+**Additionally**:
+- Frontend - Next.js + Tailwind CSS + shadcn/ui - a simple interface for reviewing recommendations, publication history, manual approvals, monitoring system states, agent activity, and content management.
+
+<div style="margin-top: 60px;"></div>
+<hr>
+<div style="margin-top: 60px;"></div>
+
+<a id="polski"></a>
 # Wymagania biznesowe
 ## Cel projektu
 Projekt adresuje potrzebę zbudowania pasywnego, skalowalnego źródła przychodów opartego na autonomicznych agentach AI.  
