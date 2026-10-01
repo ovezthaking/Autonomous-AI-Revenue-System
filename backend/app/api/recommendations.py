@@ -46,7 +46,8 @@ def list_recommendations(
     status_filter: str | None = Query(default="proposed", alias="status"),
 ) -> list[AffiliateProgram]:
     stmt = select(AffiliateProgram).order_by(
-        AffiliateProgram.created_at.desc()
+        AffiliateProgram.score.desc().nulls_last(),
+        AffiliateProgram.created_at.desc(),
     )
     if status_filter:
         stmt = stmt.where(AffiliateProgram.status == status_filter)
