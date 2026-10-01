@@ -17,4 +17,4 @@ celery_app.conf.beat_schedule = {
         "schedule": 300.0,
     },
 }
-celery_app.conf.timezone = "UTC"
+celery_app.conf["timezone"] = "UTC"
