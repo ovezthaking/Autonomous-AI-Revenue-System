@@ -1,5 +1,5 @@
 import pytest
-from research_agent.agent import discover_programs_v1
+from research_agent.agent import discover_programs_v1, discover_programs_v2
 from revenue_swarm.enums import ProgramStatus
 from revenue_swarm.models.affiliate_program import AffiliateProgram
 
@@ -26,6 +26,39 @@ def test_discover_is_idempotent_by_name(db_session, make_task):
     second = discover_programs_v1(db_session, task.id, limit=5)
 
     assert isinstance(first["created"], int) and first["created"] > 0
+    assert second["created"] == 0
+
+
+def test_discover_v2_persists_scored_programs_and_rejects_empty_hit(
+    db_session, make_task
+):
+    task = make_task(type="research_programs", input={"limit": 10})
+
+    result = discover_programs_v2(db_session, task.id, limit=10)
+
+    assert result["created"] == 3
+    errors = result["errors"]
+    assert isinstance(errors, list)
+    assert any(
+        item["error"] == "rejected" and "roundup.test" in item["url"]
+        for item in errors
+    )
+    rows = db_session.query(AffiliateProgram).all()
+    assert len(rows) == 3
+    assert all(row.status == ProgramStatus.PROPOSED.value for row in rows)
+    assert all(row.score is not None and row.score > 0 for row in rows)
+    assert all(row.source_task_id == task.id for row in rows)
+    assert all("commission_type" in row.extras["facts"] for row in rows)
+    assert all("roundup.test" not in (row.url or "") for row in rows)
+
+
+def test_discover_v2_second_run_creates_nothing(db_session, make_task):
+    task = make_task(type="research_programs", input={"limit": 10})
+
+    first = discover_programs_v2(db_session, task.id, limit=10)
+    second = discover_programs_v2(db_session, task.id, limit=10)
+
+    assert first["created"] == 3
     assert second["created"] == 0
 
 

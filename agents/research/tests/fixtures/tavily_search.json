@@ -1,0 +1,22 @@
+{
+  "results": [
+    {
+      "url": "https://vendor-a.test/affiliate-program",
+      "title": "Vendor A",
+      "content": "snippet a",
+      "raw_content": "raw a"
+    },
+    {
+      "url": "https://vendor-a.test/affiliate-program",
+      "title": "Vendor A duplicate",
+      "content": "snippet duplicate",
+      "raw_content": "raw duplicate"
+    },
+    {
+      "url": "https://vendor-b.test/partners",
+      "title": "Vendor B",
+      "content": "snippet b",
+      "raw_content": "raw b"
+    }
+  ]
+}
