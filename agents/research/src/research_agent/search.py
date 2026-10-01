@@ -3,6 +3,7 @@ from collections.abc import Callable
 import httpx
 
 from research_agent.models import SearchHit
+from research_agent.polite import send
 from research_agent.settings import (
     SEARCH_API_KEY,
     SEARCH_MAX_RESULTS,
@@ -88,14 +89,17 @@ def _collect(
 
 
 def _tavily_hits(client: httpx.Client, query: str) -> list[SearchHit]:
-    response = client.post(
+    response = send(
         "https://api.tavily.com/search",
-        json={
-            "api_key": SEARCH_API_KEY,
-            "query": query,
-            "max_results": SEARCH_MAX_RESULTS,
-            "include_raw_content": True,
-        },
+        lambda: client.post(
+            "https://api.tavily.com/search",
+            json={
+                "api_key": SEARCH_API_KEY,
+                "query": query,
+                "max_results": SEARCH_MAX_RESULTS,
+                "include_raw_content": True,
+            },
+        ),
     )
     response.raise_for_status()
     return [
@@ -110,13 +114,16 @@ def _tavily_hits(client: httpx.Client, query: str) -> list[SearchHit]:
 
 
 def _brave_hits(client: httpx.Client, query: str) -> list[SearchHit]:
-    response = client.get(
+    response = send(
         "https://api.search.brave.com/res/v1/web/search",
-        params={"q": query, "count": SEARCH_MAX_RESULTS},
-        headers={
-            "Accept": "application/json",
-            "X-Subscription-Token": SEARCH_API_KEY,
-        },
+        lambda: client.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            params={"q": query, "count": SEARCH_MAX_RESULTS},
+            headers={
+                "Accept": "application/json",
+                "X-Subscription-Token": SEARCH_API_KEY,
+            },
+        ),
     )
     response.raise_for_status()
     web = response.json().get("web") or {}

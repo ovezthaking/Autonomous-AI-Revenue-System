@@ -7,6 +7,7 @@ import redis
 from revenue_swarm.config import REDIS_URL
 from selectolax.parser import HTMLParser
 
+from research_agent.polite import pace, send
 from research_agent.settings import (
     FETCH_CACHE_TTL,
     FETCH_TIMEOUT,
@@ -26,8 +27,10 @@ def allowed_by_robots(url: str) -> bool:
     if not RESPECT_ROBOTS:
         return True
     parsed = urlparse(url)
+    robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
+    pace(robots_url)
     parser = robotparser.RobotFileParser()
-    parser.set_url(f"{parsed.scheme}://{parsed.netloc}/robots.txt")
+    parser.set_url(robots_url)
     try:
         parser.read()
     except Exception:
@@ -43,7 +46,7 @@ def fetch_text(url: str) -> str | None:
         return None
     headers = {"User-Agent": FETCH_USER_AGENT}
     with httpx.Client(timeout=FETCH_TIMEOUT, follow_redirects=True) as client:
-        response = client.get(url, headers=headers)
+        response = send(url, lambda: client.get(url, headers=headers))
         if response.status_code != 200:
             return None
         html = response.text[:MAX_BYTES]

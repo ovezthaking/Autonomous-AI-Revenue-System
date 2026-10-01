@@ -119,6 +119,7 @@ def test_search_stub_returns_hits_without_http(monkeypatch):
 
 def test_tavily_maps_fields_and_dedups_urls(monkeypatch):
     monkeypatch.setattr(httpx.Client, "send", _ORIGINAL_SEND)
+    monkeypatch.setattr("research_agent.polite.REQUEST_GAP_SECONDS", 0)
     monkeypatch.setattr(search_module, "SEARCH_STUB", False)
     payload = json.loads((_FIXTURES / "tavily_search.json").read_text())
 
