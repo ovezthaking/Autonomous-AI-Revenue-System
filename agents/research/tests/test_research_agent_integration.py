@@ -1,5 +1,5 @@
 import pytest
-from research_agent.agent import discover_programs
+from research_agent.agent import discover_programs_v1
 from revenue_swarm.enums import ProgramStatus
 from revenue_swarm.models.affiliate_program import AffiliateProgram
 
@@ -9,7 +9,7 @@ pytestmark = pytest.mark.integration
 def test_discover_creates_proposed_programs(db_session, make_task):
     task = make_task(type="research_programs", input={"limit": 3})
 
-    result = discover_programs(db_session, task.id, limit=3)
+    result = discover_programs_v1(db_session, task.id, limit=3)
 
     assert result["created"] == 3
     rows = db_session.query(AffiliateProgram).all()
@@ -22,8 +22,8 @@ def test_discover_creates_proposed_programs(db_session, make_task):
 def test_discover_is_idempotent_by_name(db_session, make_task):
     task = make_task(type="research_programs", input={"limit": 5})
 
-    first = discover_programs(db_session, task.id, limit=5)
-    second = discover_programs(db_session, task.id, limit=5)
+    first = discover_programs_v1(db_session, task.id, limit=5)
+    second = discover_programs_v1(db_session, task.id, limit=5)
 
     assert first["created"] > 0
     assert second["created"] == 0

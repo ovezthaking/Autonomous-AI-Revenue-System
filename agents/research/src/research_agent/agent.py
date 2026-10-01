@@ -25,7 +25,7 @@ PROMPT_TEMPLATE = (
 )
 
 
-def discover_programs(
+def discover_programs_v1(
     db: Session,
     task_id: uuid.UUID,
     limit: int = 5,
