@@ -7,6 +7,7 @@ celery_app = Celery("revenue_swarm", broker=REDIS_URL, backend=REDIS_URL)
 celery_app.conf.task_track_started = True
 celery_app.conf.task_routes = {
     TaskName.RESEARCH_DISCOVER.value: {"queue": Queue.RESEARCH.value},
+    TaskName.RESEARCH_RESCORE.value: {"queue": Queue.RESEARCH.value},
     TaskName.CONTENT_GENERATE.value: {"queue": Queue.CONTENT.value},
     TaskName.CONTENT_PUBLISH_DUE.value: {"queue": Queue.CONTENT.value},
 }

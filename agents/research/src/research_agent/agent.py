@@ -189,6 +189,7 @@ def _persist(
                     "payout_threshold",
                     "network",
                     "currency",
+                    "confidence",
                 }
             ),
             "epc": None,

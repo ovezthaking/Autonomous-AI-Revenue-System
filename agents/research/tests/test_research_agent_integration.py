@@ -27,3 +27,61 @@ def test_discover_is_idempotent_by_name(db_session, make_task):
 
     assert first["created"] > 0
     assert second["created"] == 0
+
+
+def test_rescore_proposed_lets_epc_overtake_public_terms(
+    db_session, make_program
+):
+    from research_agent.models import ProgramFacts
+    from research_agent.score import score_program
+    from research_agent.tasks import rescore_proposed
+
+    public = {
+        "program_name": "High public terms",
+        "commission_type": "percent_recurring",
+        "commission_value": 25,
+        "cookie_days": 90,
+        "confidence": 1.0,
+    }
+    measured = {
+        "program_name": "Measured EPC",
+        "commission_type": "percent_one_time",
+        "commission_value": 25,
+        "cookie_days": 30,
+        "confidence": 0.0,
+    }
+    high_public = make_program(
+        name="High public terms",
+        score=1,
+        extras={"facts": public},
+    )
+    with_epc = make_program(
+        name="Measured EPC",
+        score=1,
+        extras={"facts": measured, "epc": 3.0},
+    )
+    approved = make_program(
+        name="Already approved",
+        status="approved",
+        score=1,
+        extras={"facts": measured, "epc": 3.0},
+    )
+    make_program(name="No facts", extras={"source": "web"})
+
+    updated = rescore_proposed(db_session)
+    db_session.flush()
+    db_session.refresh(high_public)
+    db_session.refresh(with_epc)
+    db_session.refresh(approved)
+
+    public_facts = ProgramFacts.model_validate(public)
+    public_score, _breakdown = score_program(public_facts)
+    epc_score, epc_breakdown = score_program(
+        ProgramFacts.model_validate(measured), epc=3.0
+    )
+    assert updated == 2
+    assert high_public.score == public_score
+    assert with_epc.score == epc_score
+    assert with_epc.score > high_public.score
+    assert with_epc.extras["score_breakdown"] == epc_breakdown
+    assert approved.score == 1

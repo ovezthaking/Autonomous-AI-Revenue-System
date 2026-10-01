@@ -12,6 +12,7 @@ from revenue_swarm.models.task import AgentTask
 class TaskName(StrEnum):
     GENERATE_PARAGRAPH = "generate_paragraph"
     RESEARCH_DISCOVER = "research.discover_programs"
+    RESEARCH_RESCORE = "research.rescore"
     CONTENT_GENERATE = "content.generate"
     CONTENT_PUBLISH_DUE = "content.publish_due"
 
