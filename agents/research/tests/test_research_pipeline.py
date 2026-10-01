@@ -151,3 +151,25 @@ def test_extract_facts_returns_none_when_structured_fails(monkeypatch):
     )
     hit = SearchHit(url="https://vendor.test/a", title="Vendor")
     assert extract_module.extract_facts(hit, "page text") is None
+
+
+def test_extract_facts_maps_loose_commission_labels(monkeypatch):
+    monkeypatch.setattr(extract_module, "LLM_STUB", False)
+    seen: dict[str, str] = {}
+
+    def _structured(prompt, schema):
+        seen["type"] = prompt
+        return ProgramFacts(
+            program_name="Vendor",
+            commission_type="recurring",
+            commission_value=25,
+            confidence=0.9,
+        )
+
+    monkeypatch.setattr(extract_module, "structured", _structured)
+    hit = SearchHit(url="https://vendor.test/a", title="Vendor")
+    facts = extract_module.extract_facts(hit, "25% recurring")
+    assert facts is not None
+    assert facts.commission_type == "percent_recurring"
+    assert "percent_one_time" in seen["type"]
+    assert "flat_one_time" in seen["type"]
