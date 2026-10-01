@@ -15,7 +15,7 @@ from research_agent.models import Candidate as WebCandidate
 from research_agent.score import score_program
 from research_agent.search import search
 from research_agent.settings import RESEARCH_NICHE
-from research_agent.validate import is_usable
+from research_agent.validate import is_usable, looks_like_program_url
 
 PROMPT_TEMPLATE = (
     "You evaluate affiliate programs for a niche blog about business "
@@ -95,7 +95,10 @@ def discover_programs_v2(
 
     for hit in hits:
         try:
-            text = hit.raw_content or fetch_text(hit.url)
+            if not looks_like_program_url(hit.url):
+                errors.append({"url": hit.url, "error": "rejected"})
+                continue
+            text = fetch_text(hit.url) or hit.raw_content
             if not text:
                 errors.append({"url": hit.url, "error": "no content"})
                 continue
@@ -162,7 +165,7 @@ def _normalize(name: str) -> str:
 def _host(url: str | None) -> str:
     if not url:
         return ""
-    return urlparse(url).netloc.lower()
+    return urlparse(url).netloc.lower().removeprefix("www.")
 
 
 def _persist(

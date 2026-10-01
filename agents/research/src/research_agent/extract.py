@@ -8,14 +8,17 @@ from research_agent.models import ProgramFacts, SearchHit
 EXTRACT_PROMPT = (
     "Extract affiliate program terms from the page text below. "
     "Use null for anything the page does not state explicitly. "
-    "Never guess numbers. Set confidence below 0.3 if the page does not "
-    "clearly describe an affiliate or partner program.\n"
+    "Never guess numbers.\n"
     "commission_type must be exactly one of these strings: "
-    "percent_recurring, percent_one_time, flat_one_time, unknown. "
-    "Use percent_recurring for a percentage paid on later payments. "
-    "Use percent_one_time for a percentage paid once. "
-    "Use flat_one_time for a fixed fee or bounty. "
-    "Use unknown when the page states no commission model.\n\n"
+    "percent_recurring, percent_one_time, flat_one_time, unknown.\n"
+    "If the page states several commission percentages, use the highest.\n"
+    "cookie_days is the cookie window in days. "
+    "A 90 day cookie window means cookie_days is 90.\n"
+    "payout_threshold is the minimum amount paid to the affiliate. "
+    "Use null for a signup bonus or a customer spend tier.\n"
+    "program_name is the company or product.\n"
+    "Set confidence to 0.9 when the page states a commission.\n\n"
+    "PAGE TITLE:\n{title}\n\n"
     "PAGE TEXT:\n{text}"
 )
 
@@ -72,14 +75,86 @@ def _facts_from_stub(hit: SearchHit) -> ProgramFacts:
     )
 
 
+def _relevant_text(text: str) -> str:
+    start_at = text.lower().find("commission")
+    if start_at == -1:
+        return text[:MAX_CHARS]
+    start = max(0, start_at - 100)
+    return text[start : start + 4_000]
+
+
 def extract_facts(hit: SearchHit, text: str) -> ProgramFacts | None:
     if LLM_STUB:
         return _facts_from_stub(hit)
-    prompt = EXTRACT_PROMPT.format(text=text[:MAX_CHARS])
+    prompt = EXTRACT_PROMPT.format(title=hit.title, text=_relevant_text(text))
     facts = structured(prompt, ProgramFacts)
     if facts is None:
         return None
-    return _canonicalize(facts)
+    return _align_with_page(hit, text, _canonicalize(facts))
+
+
+_GENERIC_PROGRAM_NAMES = {
+    "affiliate partnership",
+    "affiliate program",
+    "partner program",
+    "partners",
+}
+
+
+def _align_with_page(
+    hit: SearchHit, text: str, facts: ProgramFacts
+) -> ProgramFacts:
+    updates: dict[str, object] = {}
+    name = facts.program_name.strip().lower()
+    title = hit.title.strip()
+    if name in _GENERIC_PROGRAM_NAMES and title:
+        updates["program_name"] = title
+    if facts.cookie_days is None:
+        days = _stated_cookie_days(text)
+        if days is not None:
+            updates["cookie_days"] = days
+    if facts.payout_threshold is not None and not _payout_is_on_page(
+        text, facts.payout_threshold
+    ):
+        updates["payout_threshold"] = None
+    if not updates:
+        return facts
+    return facts.model_copy(update=updates)
+
+
+_COOKIE_DAYS = re.compile(
+    r"(\d+)\s*-?\s*days?\s+cookie|"
+    r"(\d+)\s*-?\s*days?\s+lifespan|"
+    r"cookie(?:\s+window|\s+period|\s+lifespan)?"
+    r"(?:\s+is\s+valid\s+for|\s+to|\s+of)?"
+    r"\s+(\d+)\s+days",
+    re.IGNORECASE,
+)
+
+
+def _stated_cookie_days(text: str) -> int | None:
+    match = _COOKIE_DAYS.search(text)
+    if match is None:
+        return None
+    days = int(next(group for group in match.groups() if group))
+    if 0 < days <= 730:
+        return days
+    return None
+
+
+def _payout_is_on_page(text: str, value: float) -> bool:
+    amount = int(value) if value.is_integer() else value
+    number = re.escape(str(amount))
+    spaced = rf"(?<!\d){number}(?!\d)"
+    ahead = re.compile(
+        rf"(?:payout|minimum payment).{{0,40}}{spaced}",
+        re.IGNORECASE | re.DOTALL,
+    )
+    behind = re.compile(
+        rf"{spaced}.{{0,40}}(?:payout|minimum payment)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    return ahead.search(text) is not None or behind.search(text) is not None
 
 
 def _canonicalize(facts: ProgramFacts) -> ProgramFacts:

@@ -255,3 +255,14 @@ def test_fetch_does_not_retry_not_found(monkeypatch):
     monkeypatch.setattr(fetch_module.httpx, "Client", _client(handler))
     assert fetch_module.fetch_text("https://vendor.test/missing") is None
     assert attempts["n"] == 1
+
+
+def test_page_text_drops_scripts():
+    html = (
+        "<html><body><script>var cookie = 1; commission</script>"
+        "<p>Earn 30% commission. 90 day cookie.</p></body></html>"
+    )
+    text = fetch_module.page_text(html)
+    assert text is not None
+    assert "Earn 30% commission" in text
+    assert "var cookie" not in text

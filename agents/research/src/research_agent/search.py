@@ -11,10 +11,32 @@ from research_agent.settings import (
     SEARCH_STUB,
 )
 
-QUERY_TEMPLATES = (
-    "{niche} affiliate program commission",
-    "{niche} partner program recurring commission",
-    "best {niche} affiliate programs high ticket",
+QUERY_TEMPLATES = ("{niche} affiliate program commission rate cookie",)
+EXCLUDED_DOMAINS = (
+    "lemlist.com",
+    "getlasso.co",
+    "partnerstack.com",
+    "profitbooks.net",
+    "idevaffiliate.com",
+    "tapfiliate.com",
+    "sparkreceipt.com",
+    "businessofapps.com",
+    "wikipedia.org",
+    "thefreedictionary.com",
+    "affiliate.watch",
+    "smallbusiness.management",
+    "wecantrack.com",
+    "affililist.com",
+    "affilipilot.io",
+    "affiliateprogramdb.com",
+    "affpaying.com",
+    "empireflippers.com",
+    "text.com",
+    "partners.livechat.com",
+    "livechat.com",
+    "getreditus.com",
+    "referly.so",
+    "saasaffiliate.com",
 )
 
 STUB_HITS = (
@@ -97,7 +119,9 @@ def _tavily_hits(client: httpx.Client, query: str) -> list[SearchHit]:
                 "api_key": SEARCH_API_KEY,
                 "query": query,
                 "max_results": SEARCH_MAX_RESULTS,
+                "search_depth": "advanced",
                 "include_raw_content": True,
+                "exclude_domains": list(EXCLUDED_DOMAINS),
             },
         ),
     )

@@ -38,6 +38,16 @@ def allowed_by_robots(url: str) -> bool:
     return parser.can_fetch(FETCH_USER_AGENT, url)
 
 
+def page_text(html: str) -> str | None:
+    tree = HTMLParser(html)
+    for node in tree.css("script, style, noscript"):
+        node.decompose()
+    body = tree.body
+    if body is None:
+        return None
+    return body.text(separator=" ", strip=True)
+
+
 def fetch_text(url: str) -> str | None:
     cached = _redis.get(_cache_key(url))
     if isinstance(cached, str):
@@ -50,9 +60,8 @@ def fetch_text(url: str) -> str | None:
         if response.status_code != 200:
             return None
         html = response.text[:MAX_BYTES]
-    body = HTMLParser(html).body
-    if body is None:
+    text = page_text(html)
+    if text is None:
         return None
-    text = body.text(separator=" ", strip=True)
     _redis.setex(_cache_key(url), FETCH_CACHE_TTL, text)
     return text
