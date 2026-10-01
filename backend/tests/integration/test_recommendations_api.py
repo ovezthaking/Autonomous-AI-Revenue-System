@@ -104,3 +104,43 @@ def test_approve_already_decided_program_returns_409(client, make_program):
 def test_reject_unknown_program_returns_404(client):
     response = client.post(f"/recommendations/{uuid.uuid4()}/reject")
     assert response.status_code == 404
+
+
+def test_patch_metrics_stores_epc_without_dropping_extras(
+    client, make_program
+):
+    program = make_program(
+        extras={
+            "source": "web",
+            "facts": {"commission_type": "percent_recurring"},
+        }
+    )
+
+    response = client.patch(
+        f"/recommendations/{program.id}/metrics",
+        json={"epc": 1.5},
+    )
+
+    assert response.status_code == 200
+    extras = response.json()["extras"]
+    assert extras["epc"] == 1.5
+    assert extras["epc_source"] == "network_dashboard"
+    assert extras["source"] == "web"
+    assert extras["facts"]["commission_type"] == "percent_recurring"
+
+
+def test_patch_metrics_rejects_non_positive_epc(client, make_program):
+    program = make_program()
+    response = client.patch(
+        f"/recommendations/{program.id}/metrics",
+        json={"epc": 0},
+    )
+    assert response.status_code == 422
+
+
+def test_patch_metrics_unknown_program_returns_404(client):
+    response = client.patch(
+        f"/recommendations/{uuid.uuid4()}/metrics",
+        json={"epc": 1.5},
+    )
+    assert response.status_code == 404

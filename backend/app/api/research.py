@@ -32,3 +32,9 @@ def run_research(
     db.refresh(row)
     celery_app.send_task(TaskName.RESEARCH_DISCOVER, args=[str(row.id)])
     return row
+
+
+@router.post("/rescore", status_code=status.HTTP_202_ACCEPTED)
+def enqueue_rescore() -> dict[str, str]:
+    celery_app.send_task(TaskName.RESEARCH_RESCORE)
+    return {"status": "queued"}

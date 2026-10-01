@@ -37,3 +37,8 @@ class RecommendationRead(BaseModel):
 
 class AffiliateLinkUpdate(BaseModel):
     affiliate_link: str = Field(min_length=8, max_length=2000)
+
+
+class ProgramMetricsUpdate(BaseModel):
+    epc: float = Field(gt=0, le=1000)
+    epc_source: str = Field(default="network_dashboard", max_length=100)

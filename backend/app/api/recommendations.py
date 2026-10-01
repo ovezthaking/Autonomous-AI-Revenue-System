@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.schemas.affiliate_program import (
     AffiliateLinkUpdate,
     HitlAction,
+    ProgramMetricsUpdate,
     RecommendationCreate,
     RecommendationRead,
 )
@@ -97,6 +98,25 @@ def set_affiliate_link(
             detail="Affiliate link can only be set on approved programs",
         )
     row.affiliate_link = body.affiliate_link
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.patch("/{program_id}/metrics", response_model=RecommendationRead)
+def update_program_metrics(
+    program_id: uuid.UUID, body: ProgramMetricsUpdate, db: DbSession
+) -> AffiliateProgram:
+    row = db.get(AffiliateProgram, program_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+    row.extras = {
+        **(row.extras or {}),
+        "epc": body.epc,
+        "epc_source": body.epc_source,
+    }
     db.commit()
     db.refresh(row)
     return row
