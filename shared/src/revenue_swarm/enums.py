@@ -35,3 +35,18 @@ class TaskType(StrEnum):
     RESEARCH_PROGRAMS = "research_programs"
     GENERATE_CONTENT = "generate_content"
     PUBLISH_DUE = "publish_due"
+
+
+class PublicationStatus(StrEnum):
+    IN_FLIGHT = "in_flight"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    NEEDS_REVIEW = "needs_review"
+    RETRACTED = "retracted"
+
+
+class PublishTargetName(StrEnum):
+    DRYRUN = "dryrun"
+    WORDPRESS = "wordpress"
+    MASTODON = "mastodon"
+    X = "x"
