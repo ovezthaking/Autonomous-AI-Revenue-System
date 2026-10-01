@@ -26,4 +26,6 @@ def is_usable(facts: ProgramFacts, url: str) -> bool:
         return False
     if any(frag in url for frag in BLOCKED_HOST_FRAGMENTS):
         return False
+    if not facts.program_name.strip():
+        return False
     return True
