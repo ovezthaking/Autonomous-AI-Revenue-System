@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import cast
 
 import httpx
 import research_agent.extract as extract_module
@@ -14,6 +15,7 @@ from research_agent.search import (
     search,
 )
 from research_agent.validate import is_usable
+from sqlalchemy.orm import Session
 
 _ORIGINAL_SEND = httpx.Client.send
 _FIXTURES = Path(__file__).parent / "fixtures"
@@ -86,7 +88,7 @@ def test_normalize_treats_case_and_spacing_as_the_same_name():
     from research_agent.models import Candidate
 
     fresh = _drop_known(
-        _DB(),
+        cast(Session, _DB()),
         [
             Candidate(
                 name="vendor  a",
