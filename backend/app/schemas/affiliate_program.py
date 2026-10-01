@@ -28,6 +28,7 @@ class RecommendationRead(BaseModel):
     rationale: str | None
     extras: dict[str, Any] | None
     status: str
+    score: float | None
     source_task_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime

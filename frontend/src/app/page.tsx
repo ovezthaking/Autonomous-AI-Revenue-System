@@ -15,12 +15,31 @@ import {
   type AgentTask,
   type ContentItem,
   type Recommendation,
+  type ResearchError,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 function taskLabel(tasks: AgentTask[]): string {
   if (tasks.length === 0) return "idle";
   return tasks[0].status;
+}
+
+function researchErrors(tasks: AgentTask[]): ResearchError[] {
+  const research = tasks.find((task) => task.type === "research_programs");
+  const errors = research?.output?.errors;
+  if (!Array.isArray(errors)) return [];
+  return errors.filter(
+    (item) => typeof item?.url === "string" && typeof item?.error === "string",
+  );
+}
+
+function breakdownLabel(item: Recommendation): string | null {
+  const breakdown = item.extras?.score_breakdown;
+  if (!breakdown) return null;
+  const parts = Object.entries(breakdown).map(
+    ([name, points]) => `${name} ${points}`,
+  );
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 export default function DashboardPage() {
@@ -151,6 +170,8 @@ export default function DashboardPage() {
     }
   };
 
+  const errors = researchErrors(tasks);
+
   const onPublishDue = async () => {
     setPublishing(true);
     setError(null);
@@ -169,6 +190,12 @@ export default function DashboardPage() {
       <h1 className="text-2xl font-semibold">HITL dashboard</h1>
       <p>
         Agent / last task: <strong>{taskLabel(tasks)}</strong>
+        {errors.length > 0 ? (
+          <span className="mt-1 block text-xs text-neutral-600">
+            Research errors:{" "}
+            {errors.map((item) => `${item.url} (${item.error})`).join("; ")}
+          </span>
+        ) : null}
       </p>
       {error ? <p className="text-red-600">{error}</p> : null}
 
@@ -176,35 +203,56 @@ export default function DashboardPage() {
         <h2 className="mb-3 text-lg font-medium">Proposed programs</h2>
         {proposed.length === 0 ? <p>No pending recommendations.</p> : null}
         <ul className="space-y-4">
-          {proposed.map((item) => (
-            <li key={item.id} className="rounded border p-4">
-              <div className="font-medium">{item.name}</div>
-              {item.rationale ? (
-                <p className="text-sm">{item.rationale}</p>
-              ) : null}
-              {item.url ? (
-                <a className="text-sm underline" href={item.url}>
-                  {item.url}
-                </a>
-              ) : null}
-              <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  disabled={busyId === item.id}
-                  onClick={() => onDecide(item.id, "approve")}
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  disabled={busyId === item.id}
-                  onClick={() => onDecide(item.id, "reject")}
-                >
-                  Reject
-                </button>
-              </div>
-            </li>
-          ))}
+          {proposed.map((item) => {
+            const breakdown = breakdownLabel(item);
+            return (
+              <li key={item.id} className="rounded border p-4">
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">{item.name}</div>
+                  {item.score != null ? (
+                    <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs">
+                      {item.score}
+                    </span>
+                  ) : null}
+                </div>
+                {breakdown ? (
+                  <p className="text-xs text-neutral-600">{breakdown}</p>
+                ) : null}
+                {item.rationale ? (
+                  <p className="text-sm">{item.rationale}</p>
+                ) : null}
+                {item.url ? (
+                  <a className="text-sm underline" href={item.url}>
+                    {item.url}
+                  </a>
+                ) : null}
+                {typeof item.extras?.evidence_url === "string" ? (
+                  <a
+                    className="block text-sm underline"
+                    href={item.extras.evidence_url}
+                  >
+                    source
+                  </a>
+                ) : null}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={busyId === item.id}
+                    onClick={() => onDecide(item.id, "approve")}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyId === item.id}
+                    onClick={() => onDecide(item.id, "reject")}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

@@ -1,5 +1,17 @@
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export type ScoreBreakdown = Record<string, number>;
+
+export type RecommendationExtras = {
+  evidence_url?: string | null;
+  score_breakdown?: ScoreBreakdown | null;
+};
+
+export type ResearchError = {
+  url: string;
+  error: string;
+};
+
 export type Recommendation = {
   id: string;
   name: string;
@@ -8,7 +20,9 @@ export type Recommendation = {
   network: string | null;
   category: string | null;
   rationale: string | null;
+  extras: RecommendationExtras | null;
   status: string;
+  score: number | null;
   source_task_id?: string | null;
   created_at: string;
   updated_at?: string | null;
@@ -30,7 +44,10 @@ export type AgentTask = {
   id: string;
   type: string;
   status: string;
-  output: { text?: string } | null;
+  output: {
+    text?: string;
+    errors?: ResearchError[];
+  } | null;
   error: string | null;
   created_at: string;
 };
