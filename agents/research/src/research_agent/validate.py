@@ -16,11 +16,12 @@ def is_usable(facts: ProgramFacts, url: str) -> bool:
         return False
     if facts.commission_type == "unknown" and facts.commission_value is None:
         return False
-    if (
-        facts.commission_value is not None
-        and not 0 < facts.commission_value <= 100_00
-    ):
-        return False
+    if facts.commission_value is not None:
+        if facts.commission_type.startswith("percent"):
+            if not 0 < facts.commission_value <= 100:
+                return False
+        elif not 0 < facts.commission_value <= 100_000:
+            return False
     if facts.cookie_days is not None and not 0 < facts.cookie_days <= 730:
         return False
     if any(frag in url for frag in BLOCKED_HOST_FRAGMENTS):

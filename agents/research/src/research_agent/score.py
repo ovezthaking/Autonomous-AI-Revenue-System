@@ -33,6 +33,5 @@ def score_program(
     if epc is not None:
         parts["epc"] = min(epc / 3.0, 1.0) * WEIGHTS["epc"]
 
-    return round(sum(parts.values()), 2), {
-        k: round(v, 2) for k, v in parts.items()
-    }
+    breakdown = {key: round(value, 2) for key, value in parts.items()}
+    return round(sum(breakdown.values()), 2), breakdown
