@@ -25,7 +25,7 @@ def test_discover_is_idempotent_by_name(db_session, make_task):
     first = discover_programs_v1(db_session, task.id, limit=5)
     second = discover_programs_v1(db_session, task.id, limit=5)
 
-    assert first["created"] > 0
+    assert isinstance(first["created"], int) and first["created"] > 0
     assert second["created"] == 0
 
 
