@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from revenue_swarm.enums import ProgramStatus
@@ -24,6 +25,7 @@ def test_create_recommendation_persists_as_proposed(client):
     assert body["name"] == "ACME SaaS Affiliate"
     assert body["status"] == ProgramStatus.PROPOSED.value
     assert body["extras"] == {"epc": 4.2}
+    assert body["score"] is None
     assert uuid.UUID(body["id"])
 
 
@@ -42,6 +44,42 @@ def test_list_recommendations_defaults_to_proposed_only(client, make_program):
     ids = [row["id"] for row in response.json()]
     assert str(proposed.id) in ids
     assert len(response.json()) == 1
+
+
+def test_list_recommendations_orders_by_score_then_created_at(
+    client, make_program
+):
+    now = datetime.now(UTC)
+    older = make_program(
+        name="Older tie",
+        score=5,
+        created_at=now - timedelta(hours=3),
+    )
+    missing = make_program(
+        name="No score",
+        score=None,
+        created_at=now,
+    )
+    newer = make_program(
+        name="Newer tie",
+        score=5,
+        created_at=now - timedelta(hours=1),
+    )
+    best = make_program(
+        name="Best",
+        score=20,
+        created_at=now - timedelta(hours=2),
+    )
+
+    response = client.get("/recommendations")
+
+    assert response.status_code == 200
+    assert [row["name"] for row in response.json()] == [
+        best.name,
+        newer.name,
+        older.name,
+        missing.name,
+    ]
 
 
 def test_list_recommendations_with_empty_status_returns_everything(
