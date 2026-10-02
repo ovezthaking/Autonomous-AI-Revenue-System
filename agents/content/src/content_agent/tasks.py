@@ -1,8 +1,5 @@
 from datetime import UTC, datetime
 
-from sqlalchemy.orm import Session
-
-from content_agent.setting import PUBLISH_MAX_ATTEMPTS
 from revenue_swarm.celery import celery_app
 from revenue_swarm.db import SessionLocal
 from revenue_swarm.enums import ContentStatus, PublicationStatus
@@ -10,8 +7,21 @@ from revenue_swarm.models.content_item import ContentItem
 from revenue_swarm.models.publication import Publication
 from revenue_swarm.tasks import TaskName, run_agent_task
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from content_agent.agent import generate_content
+from content_agent.publish.base import (
+    PermanentError,
+    PublishTarget,
+    TransientError,
+    UnknownOutcomeError,
+)
+from content_agent.setting import (
+    MASTODON_TOKEN,
+    PUBLISH_MAX_ATTEMPTS,
+    WORDPRESS_APP_PASSWORD,
+    X_BEARER_TOKEN,
+)
 
 
 @celery_app.task(name=TaskName.CONTENT_GENERATE.value)
@@ -86,3 +96,53 @@ def reserve(db: Session, item: ContentItem, target: str) -> Publication | None:
     existing.error = None
     db.commit()
     return existing
+
+
+SECRETS = tuple(
+    s for s in (WORDPRESS_APP_PASSWORD, X_BEARER_TOKEN, MASTODON_TOKEN) if s
+)
+
+
+def redact(text: str) -> str:
+    for secret in SECRETS:
+        text = text.replace(secret, "***")
+    return text[:200]
+
+
+def _fail(
+    db: Session, pub: Publication, exc: Exception, *, retryable: bool
+) -> None:
+    pub.status = PublicationStatus.FAILED.value
+    pub.error = redact(str(exc))
+    pub.payload = {**(pub.payload or {}), "retryable": retryable}
+    db.commit()
+
+
+def _needs_review(db: Session, pub: Publication, exc: Exception) -> None:
+    pub.status = PublicationStatus.NEEDS_REVIEW.value
+    pub.error = redact(str(exc))
+    db.commit()
+
+
+def _deliver(
+    db: Session, item: ContentItem, pub: Publication, target: PublishTarget
+) -> str:
+    try:
+        result = target.publish(item)
+    except TransientError as e:
+        _fail(db, pub, e, retryable=True)
+        return "failed"
+    except UnknownOutcomeError as e:
+        _needs_review(db, pub, e)
+        return "needs_review"
+    except PermanentError as e:
+        _fail(db, pub, e, retryable=False)
+        return "failed"
+    pub.status = PublicationStatus.SUCCEEDED.value
+    pub.external_id = result.external_id
+    pub.external_url = result.url
+    pub.payload = result.payload
+    item.status = ContentStatus.PUBLISHED.value
+    item.published_at = datetime.now(UTC)
+    db.commit()
+    return "succeeded"
