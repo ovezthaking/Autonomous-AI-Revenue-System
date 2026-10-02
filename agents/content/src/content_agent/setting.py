@@ -1,6 +1,5 @@
 from revenue_swarm.config import getenv
 
-
 PUBLISH_ENABLED = getenv("PUBLISH_ENABLED", "0") == "1"
 PUBLISH_TARGET_BLOG = getenv("PUBLISH_TARGET_BLOG", "dryrun")
 PUBLISH_TARGET_SOCIAL = getenv("PUBLISH_TARGET_SOCIAL", "dryrun")
