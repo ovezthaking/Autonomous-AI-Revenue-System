@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime
 
 from revenue_swarm.celery import celery_app
@@ -16,6 +17,7 @@ from content_agent.publish.base import (
     TransientError,
     UnknownOutcomeError,
 )
+from content_agent.publish.registry import TARGETS
 from content_agent.setting import (
     MASTODON_TOKEN,
     PUBLISH_MAX_ATTEMPTS,
@@ -49,6 +51,24 @@ def publish_due_task() -> int:
             row.published_at = now
         db.commit()
         return len(rows)
+    finally:
+        db.close()
+
+
+@celery_app.task(name=TaskName.CONTENT_RETRACT.value)
+def retract_task(publication_id: str) -> None:
+    db = SessionLocal()
+    try:
+        pub = db.get(Publication, uuid.UUID(publication_id))
+        if pub is None or pub.status != PublicationStatus.SUCCEEDED.value:
+            return
+        item = db.get(ContentItem, pub.content_item_id)
+        if pub.external_id:
+            TARGETS[pub.target]().retract(pub.external_id)
+        pub.status = PublicationStatus.RETRACTED.value
+        if item is not None:
+            item.status = ContentStatus.APPROVED.value
+        db.commit()
     finally:
         db.close()
 

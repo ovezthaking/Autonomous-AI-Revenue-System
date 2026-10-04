@@ -4,10 +4,12 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from revenue_swarm.celery import celery_app
 from revenue_swarm.db import get_db
 from revenue_swarm.enums import ContentStatus, PublicationStatus
 from revenue_swarm.models.content_item import ContentItem
 from revenue_swarm.models.publication import Publication
+from revenue_swarm.tasks import TaskName
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -79,3 +81,9 @@ def resolve_publication(
     db.commit()
     db.refresh(pub)
     return pub
+
+
+@router.post("/{publication_id}/retract", status_code=status.HTTP_202_ACCEPTED)
+def retract_publication(publication_id: uuid.UUID) -> dict[str, str]:
+    celery_app.send_task(TaskName.CONTENT_RETRACT, args=[str(publication_id)])
+    return {"status": "queued"}

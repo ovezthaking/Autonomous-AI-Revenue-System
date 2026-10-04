@@ -15,6 +15,7 @@ class TaskName(StrEnum):
     RESEARCH_RESCORE = "research.rescore"
     CONTENT_GENERATE = "content.generate"
     CONTENT_PUBLISH_DUE = "content.publish_due"
+    CONTENT_RETRACT = "content.retract"
 
 
 class Queue(StrEnum):
