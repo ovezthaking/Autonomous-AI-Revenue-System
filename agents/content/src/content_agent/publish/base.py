@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Protocol
+from typing import NoReturn, Protocol
 
 import httpx
 from content_agent.tasks import redact
@@ -46,7 +46,7 @@ def raise_for_status(response: httpx.Response) -> None:
     raise PermanentError(detail)
 
 
-def raise_for_transport(exc: httpx.HTTPError) -> None:
+def raise_for_transport(exc: httpx.HTTPError) -> NoReturn:
     detail = redact(str(exc))
     if isinstance(exc, httpx.ConnectError):
         raise TransientError(detail) from exc
