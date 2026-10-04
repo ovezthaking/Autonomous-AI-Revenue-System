@@ -10,7 +10,7 @@ TARGETS: dict[str, type[PublishTarget]] = {
     PublishTargetName.DRYRUN.value: DryRunTarget,
     PublishTargetName.WORDPRESS.value: WordPressTarget,
     PublishTargetName.MASTODON.value: MastodonTarget,
-    PublishTargetName.X.value: XTarget
+    PublishTargetName.X.value: XTarget,
 }
 
 
