@@ -305,6 +305,7 @@ export default function DashboardPage() {
               <p className="text-xs">
                 {item.channel} · {item.status}
               </p>
+              <p className="text-xs">Treść zawiera disclosure.</p>
               {item.status === "draft" ? (
                 <div className="mt-2 flex gap-2">
                   <button
