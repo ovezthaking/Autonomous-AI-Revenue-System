@@ -3,8 +3,14 @@ from datetime import UTC, datetime
 
 from revenue_swarm.celery import celery_app
 from revenue_swarm.db import SessionLocal
-from revenue_swarm.enums import ContentStatus, PublicationStatus
+from revenue_swarm.enums import (
+    ContentStatus,
+    HitlDecisionValue,
+    HitlEntityType,
+    PublicationStatus,
+)
 from revenue_swarm.models.content_item import ContentItem
+from revenue_swarm.models.hitl_decision import HitlDecision
 from revenue_swarm.models.publication import Publication
 from revenue_swarm.tasks import TaskName, run_agent_task
 from sqlalchemy import select
@@ -18,9 +24,11 @@ from content_agent.publish.base import (
     UnknownOutcomeError,
 )
 from content_agent.publish.registry import TARGETS
-from content_agent.setting import (
+from content_agent.settings import (
     MASTODON_TOKEN,
+    PUBLISH_ENABLED,
     PUBLISH_MAX_ATTEMPTS,
+    PUBLISH_WINDOW_HOURS,
     WORDPRESS_APP_PASSWORD,
     X_BEARER_TOKEN,
 )
@@ -166,3 +174,33 @@ def _deliver(
     item.published_at = datetime.now(UTC)
     db.commit()
     return "succeeded"
+
+
+def may_publish(db: Session, item: ContentItem) -> str | None:
+    """Returns a reason to skip, or None when publishing is allowed"""
+    if not PUBLISH_ENABLED:
+        return "PUBLISH_ENABLED=0"
+    if item.status != ContentStatus.SCHEDULED.value:
+        return f"status={item.status}"
+    if item.scheduled_for is None or item.scheduled_for > datetime.now(UTC):
+        return "not due yet"
+    if not _has_hitl_approval(db, item.id):
+        return "no HITL approval on record"
+    if not _within_window(datetime.now(UTC)):
+        return "outside publishing window"
+    return None
+
+
+def _has_hitl_approval(db: Session, content_id: uuid.UUID) -> bool:
+    stmt = select(HitlDecision.id).where(
+        HitlDecision.entity_type == HitlEntityType.CONTENT_ITEM.value,
+        HitlDecision.entity_id == content_id,
+        HitlDecision.decision == HitlDecisionValue.APPROVED.value,
+    )
+    return db.scalar(stmt) is not None
+
+
+def _within_window(now: datetime) -> bool:
+    start_s, end_s = PUBLISH_WINDOW_HOURS.split("-", maxsplit=1)
+    start, end = int(start_s), int(end_s)
+    return start <= now.hour < end
