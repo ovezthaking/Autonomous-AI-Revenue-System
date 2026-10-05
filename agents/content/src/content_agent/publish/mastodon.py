@@ -5,7 +5,7 @@ from content_agent.publish.base import (
     raise_for_transport,
 )
 from content_agent.publish.html import ensure_social_disclosure
-from content_agent.setting import MASTODON_BASE_URL, MASTODON_TOKEN
+from content_agent.settings import MASTODON_BASE_URL, MASTODON_TOKEN
 from revenue_swarm.enums import PublishTargetName
 from revenue_swarm.models.content_item import ContentItem
 

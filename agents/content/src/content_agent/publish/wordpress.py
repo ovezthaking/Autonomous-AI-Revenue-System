@@ -5,7 +5,7 @@ from content_agent.publish.base import (
     raise_for_transport,
 )
 from content_agent.publish.html import to_html
-from content_agent.setting import (
+from content_agent.settings import (
     WORDPRESS_APP_PASSWORD,
     WORDPRESS_BASE_URL,
     WORDPRESS_POST_STATUS,

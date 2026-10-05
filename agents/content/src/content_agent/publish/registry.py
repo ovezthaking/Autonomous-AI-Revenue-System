@@ -3,7 +3,7 @@ from content_agent.publish.dryrun import DryRunTarget
 from content_agent.publish.mastodon import MastodonTarget
 from content_agent.publish.wordpress import WordPressTarget
 from content_agent.publish.x import XTarget
-from content_agent.setting import PUBLISH_TARGET_BLOG, PUBLISH_TARGET_SOCIAL
+from content_agent.settings import PUBLISH_TARGET_BLOG, PUBLISH_TARGET_SOCIAL
 from revenue_swarm.enums import ContentChannel, PublishTargetName
 
 TARGETS: dict[str, type[PublishTarget]] = {
