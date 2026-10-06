@@ -10,6 +10,7 @@ celery_app.conf.task_routes = {
     TaskName.RESEARCH_RESCORE.value: {"queue": Queue.RESEARCH.value},
     TaskName.CONTENT_GENERATE.value: {"queue": Queue.CONTENT.value},
     TaskName.CONTENT_PUBLISH_DUE.value: {"queue": Queue.CONTENT.value},
+    TaskName.CONTENT_RETRACT.value: {"queue": Queue.CONTENT.value},
 }
 celery_app.conf.beat_schedule = {
     "publish-due-every-5-min": {
