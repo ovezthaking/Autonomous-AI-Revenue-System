@@ -14,7 +14,7 @@ celery_app.conf.task_routes = {
 celery_app.conf.beat_schedule = {
     "publish-due-every-5-min": {
         "task": TaskName.CONTENT_PUBLISH_DUE.value,
-        "schedule": 300.0,
+        "schedule": 900.0,
     },
 }
 celery_app.conf["timezone"] = "UTC"
