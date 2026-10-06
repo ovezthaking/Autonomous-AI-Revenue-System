@@ -1,6 +1,8 @@
+import time
 import uuid
 from datetime import UTC, datetime
 
+from celery.utils.log import logger
 from revenue_swarm.celery import celery_app
 from revenue_swarm.db import SessionLocal
 from revenue_swarm.enums import (
@@ -23,14 +25,20 @@ from content_agent.publish.base import (
     TransientError,
     UnknownOutcomeError,
 )
-from content_agent.publish.registry import TARGETS
+from content_agent.publish.registry import TARGETS, target_for
 from content_agent.settings import (
     MASTODON_TOKEN,
     PUBLISH_ENABLED,
     PUBLISH_MAX_ATTEMPTS,
+    PUBLISH_MAX_PER_RUN,
+    PUBLISH_MIN_INTERVAL_SECONDS,
     PUBLISH_WINDOW_HOURS,
     WORDPRESS_APP_PASSWORD,
     X_BEARER_TOKEN,
+)
+
+SECRETS = tuple(
+    s for s in (WORDPRESS_APP_PASSWORD, X_BEARER_TOKEN, MASTODON_TOKEN) if s
 )
 
 
@@ -43,22 +51,55 @@ def generate_content_task(task_id: str) -> None:
     run_agent_task(task_id, handler)
 
 
-@celery_app.task(name=TaskName.CONTENT_PUBLISH_DUE.value)
-def publish_due_task() -> int:
+# @celery_app.task(name=TaskName.CONTENT_PUBLISH_DUE.value)
+# def publish_due_task() -> int:
+#     db = SessionLocal()
+#     try:
+#         now = datetime.now(UTC)
+#         stmt = select(ContentItem).where(
+#             ContentItem.status == ContentStatus.SCHEDULED.value,
+#             ContentItem.scheduled_for.is_not(None),
+#             ContentItem.scheduled_for <= now,
+#         )
+#         rows = list(db.scalars(stmt).all())
+#         for row in rows:
+#             row.status = ContentStatus.PUBLISHED.value
+#             row.published_at = now
+#         db.commit()
+#         return len(rows)
+#     finally:
+#         db.close()
+
+
+@celery_app.task(
+    name=TaskName.CONTENT_PUBLISH_DUE.value,
+    soft_time_limit=300,
+    time_limit=360,
+)
+def publish_due_task() -> dict[str, int]:
     db = SessionLocal()
+    published = skipped = failed = 0
     try:
-        now = datetime.now(UTC)
-        stmt = select(ContentItem).where(
-            ContentItem.status == ContentStatus.SCHEDULED.value,
-            ContentItem.scheduled_for.is_not(None),
-            ContentItem.scheduled_for <= now,
-        )
-        rows = list(db.scalars(stmt).all())
-        for row in rows:
-            row.status = ContentStatus.PUBLISHED.value
-            row.published_at = now
-        db.commit()
-        return len(rows)
+        for item in _due_items(db, limit=PUBLISH_MAX_PER_RUN * 3):
+            reason = may_publish(db, item)
+            if reason is not None:
+                logger.info("skip %s: %s", item.id, reason)
+                skipped += 1
+                continue
+            if published >= PUBLISH_MAX_PER_RUN:
+                break
+
+            target = target_for(item.channel)
+            pub = reserve(db, item, target.name)
+            if pub is None:
+                skipped += 1
+                continue
+
+            outcome = _deliver(db, item, pub, target)
+            published += outcome == "succeeded"
+            failed += outcome != "succeeded"
+            time.sleep(PUBLISH_MIN_INTERVAL_SECONDS)
+        return {"published": published, "skipped": skipped, "failed": failed}
     finally:
         db.close()
 
@@ -79,6 +120,36 @@ def retract_task(publication_id: str) -> None:
         db.commit()
     finally:
         db.close()
+
+
+def _due_items(db: Session, limit: int) -> list[ContentItem]:
+    now = datetime.now(UTC)
+    stmt = (
+        select(ContentItem)
+        .where(
+            ContentItem.status == ContentStatus.SCHEDULED.value,
+            ContentItem.scheduled_for.is_not(None),
+            ContentItem.scheduled_for <= now,
+        )
+        .order_by(ContentItem.scheduled_for.asc())
+        .limit(limit)
+    )
+    return list(db.scalars(stmt).all())
+
+
+def may_publish(db: Session, item: ContentItem) -> str | None:
+    """Returns a reason to skip, or None when publishing is allowed"""
+    if not PUBLISH_ENABLED:
+        return "PUBLISH_ENABLED=0"
+    if item.status != ContentStatus.SCHEDULED.value:
+        return f"status={item.status}"
+    if item.scheduled_for is None or item.scheduled_for > datetime.now(UTC):
+        return "not due yet"
+    if not _has_hitl_approval(db, item.id):
+        return "no HITL approval on record"
+    if not _within_window(datetime.now(UTC)):
+        return "outside publishing window"
+    return None
 
 
 def reserve(db: Session, item: ContentItem, target: str) -> Publication | None:
@@ -126,32 +197,6 @@ def reserve(db: Session, item: ContentItem, target: str) -> Publication | None:
     return existing
 
 
-SECRETS = tuple(
-    s for s in (WORDPRESS_APP_PASSWORD, X_BEARER_TOKEN, MASTODON_TOKEN) if s
-)
-
-
-def redact(text: str) -> str:
-    for secret in SECRETS:
-        text = text.replace(secret, "***")
-    return text[:200]
-
-
-def _fail(
-    db: Session, pub: Publication, exc: Exception, *, retryable: bool
-) -> None:
-    pub.status = PublicationStatus.FAILED.value
-    pub.error = redact(str(exc))
-    pub.payload = {**(pub.payload or {}), "retryable": retryable}
-    db.commit()
-
-
-def _needs_review(db: Session, pub: Publication, exc: Exception) -> None:
-    pub.status = PublicationStatus.NEEDS_REVIEW.value
-    pub.error = redact(str(exc))
-    db.commit()
-
-
 def _deliver(
     db: Session, item: ContentItem, pub: Publication, target: PublishTarget
 ) -> str:
@@ -176,19 +221,25 @@ def _deliver(
     return "succeeded"
 
 
-def may_publish(db: Session, item: ContentItem) -> str | None:
-    """Returns a reason to skip, or None when publishing is allowed"""
-    if not PUBLISH_ENABLED:
-        return "PUBLISH_ENABLED=0"
-    if item.status != ContentStatus.SCHEDULED.value:
-        return f"status={item.status}"
-    if item.scheduled_for is None or item.scheduled_for > datetime.now(UTC):
-        return "not due yet"
-    if not _has_hitl_approval(db, item.id):
-        return "no HITL approval on record"
-    if not _within_window(datetime.now(UTC)):
-        return "outside publishing window"
-    return None
+def _fail(
+    db: Session, pub: Publication, exc: Exception, *, retryable: bool
+) -> None:
+    pub.status = PublicationStatus.FAILED.value
+    pub.error = redact(str(exc))
+    pub.payload = {**(pub.payload or {}), "retryable": retryable}
+    db.commit()
+
+
+def _needs_review(db: Session, pub: Publication, exc: Exception) -> None:
+    pub.status = PublicationStatus.NEEDS_REVIEW.value
+    pub.error = redact(str(exc))
+    db.commit()
+
+
+def redact(text: str) -> str:
+    for secret in SECRETS:
+        text = text.replace(secret, "***")
+    return text[:200]
 
 
 def _has_hitl_approval(db: Session, content_id: uuid.UUID) -> bool:
