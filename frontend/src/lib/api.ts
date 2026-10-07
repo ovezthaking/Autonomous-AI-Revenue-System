@@ -52,6 +52,18 @@ export type AgentTask = {
   created_at: string;
 };
 
+export type Publication = {
+  id: string;
+  content_item_id: string;
+  target: string;
+  status: string;
+  attempts: number;
+  external_id: string | null;
+  external_url: string | null;
+  error: string | null;
+  updated_at: string;
+};
+
 const parse = async <T>(res: Response): Promise<T> => {
   if (!res.ok) {
     const detail = await res.text();
@@ -144,4 +156,34 @@ export const scheduleContent = async (id: string) => {
 export const publishDue = async () => {
   const res = await fetch(`${API}/content/publish-due`, { method: "POST" });
   return parse<{ status: string }>(res);
+};
+
+export const fetchNeedsReview = async (): Promise<Array<Publication>> => {
+  const res = await fetch(`${API}/publications/needs-review`, {
+    cache: "no-store",
+  });
+  return parse<Array<Publication>>(res);
+};
+
+export const fetchPublications = async (): Promise<Array<Publication>> => {
+  const res = await fetch(`${API}/publications?limit=20`, {
+    cache: "no-store",
+  });
+  return parse<Array<Publication>>(res);
+};
+
+export const resolvePublication = async (
+  id: string,
+  resolution: "published" | "not_published",
+  externalId?: string,
+): Promise<void> => {
+  const res = await fetch(`${API}/publications/${id}/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      resolution,
+      external_id: externalId ?? null,
+    }),
+  });
+  await parse(res);
 };

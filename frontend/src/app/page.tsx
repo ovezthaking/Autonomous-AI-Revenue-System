@@ -5,9 +5,12 @@ import {
   decide,
   decideContent,
   fetchContent,
+  fetchNeedsReview,
   fetchRecentTasks,
   fetchRecommendations,
+  Publication,
   publishDue,
+  resolvePublication,
   runContent,
   runResearch,
   scheduleContent,
@@ -53,19 +56,22 @@ export default function DashboardPage() {
   const [runningContent, setRunningContent] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [linkDrafts, setLinkDrafts] = useState<Record<string, string>>({});
+  const [needsReview, setNeedsReview] = useState<Publication[]>([]);
 
   const reload = useCallback(async () => {
-    const [proposedRows, approvedRows, contentRows, taskRows] =
+    const [proposedRows, approvedRows, contentRows, taskRows, reviewRows] =
       await Promise.all([
         fetchRecommendations("proposed"),
         fetchRecommendations("approved"),
         fetchContent(),
         fetchRecentTasks(),
+        fetchNeedsReview(),
       ]);
     setProposed(proposedRows);
     setApproved(approvedRows);
     setContent(contentRows);
     setTasks(taskRows);
+    setNeedsReview(reviewRows);
   }, []);
 
   useEffect(() => {
@@ -199,6 +205,37 @@ export default function DashboardPage() {
       </p>
       {error ? <p className="text-red-600">{error}</p> : null}
 
+      <section className="mb-8 rounded border border-amber-500 p-4">
+        <h2 className="mb-3 text-lg font-medium">Needs review</h2>
+        {needsReview.length === 0 ? <p>No publication needs review.</p> : null}
+        <ul>
+          {needsReview.map((row: Publication) => (
+            <li key={row.id}>
+              <div>
+                {row.target} - {row.error}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  resolvePublication(row.id, "published", row.external_id ?? "")
+                }
+              >
+                Published
+              </button>
+              <button
+                type="button"
+                onClick={() => resolvePublication(row.id, "not_published")}
+              >
+                Publication has not gone
+              </button>
+              {row.external_url ? (
+                <a href={row.external_url}>Check on WordPress</a>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section>
         <h2 className="mb-3 text-lg font-medium">Proposed programs</h2>
         {proposed.length === 0 ? <p>No pending recommendations.</p> : null}
@@ -305,7 +342,7 @@ export default function DashboardPage() {
               <p className="text-xs">
                 {item.channel} · {item.status}
               </p>
-              <p className="text-xs">Treść zawiera disclosure.</p>
+              <p className="text-xs">The content contains disclosure.</p>
               {item.status === "draft" ? (
                 <div className="mt-2 flex gap-2">
                   <button
