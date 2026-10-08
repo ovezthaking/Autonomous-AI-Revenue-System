@@ -1,7 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from revenue_swarm.models.publication import Publication
 
 pytest_plugins = ["revenue_swarm.testing.fixtures"]
 
@@ -21,6 +20,8 @@ def item(make_content_item):
 
 @pytest.fixture
 def publication(db, item):
+    from revenue_swarm.models.publication import Publication  # noqa: PLC0415
+
     row = Publication(
         content_item_id=item.id,
         target="dryrun",
