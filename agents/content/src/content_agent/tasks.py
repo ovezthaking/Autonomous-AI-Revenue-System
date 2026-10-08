@@ -86,6 +86,9 @@ def publish_due_task() -> dict[str, int]:
             target = target_for(item.channel)
             pub = reserve(db, item, target.name)
             if pub is None:
+                logger.info(
+                    "skip %s: already delivered or needs review", item.id
+                )
                 skipped += 1
                 continue
 
