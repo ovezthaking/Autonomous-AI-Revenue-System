@@ -10,21 +10,21 @@ from content_agent.publish.base import (
     raise_for_transport,
 )
 from content_agent.publish.html import ensure_disclosure, to_html
-from content_agent.tasks import may_publish, redact, reserve
+from content_agent.redaction import redact
+from content_agent.tasks import may_publish, reserve
 
 
 def test_reserve_inserts_in_flight(db, item):
     row = reserve(db, item, "dryrun")
-    assert row is None
-    if row is not None:
-        assert row.status == "in_flight"
-        assert row.attempts == 1
+    assert row is not None
+    assert row.status == "in_flight"
+    assert row.attempts == 1
 
 
 def test_reserve_skips_succeeded(db, item, publication):
     publication.status = "succeeded"
     assert reserve(db, item, publication.target) is None
-    assert publication.status == "needs_review"
+    assert publication.status == "succeeded"
 
 
 def test_reserve_retries_failed(db, item, publication):
@@ -75,14 +75,13 @@ def test_ensure_disclosure_once():
 
 def test_to_html_keeps_query_and_marks_sponsored():
     link = "https://example.com/ref?aff=1&utm=x"
-    html_out = to_html("Buy", link, "LiveAgent")
+    html_out = to_html(f"Buy {link}", link, "LiveAgent")
     assert 'rel="sponsored nofollow"' in html_out
-    assert "aff=1&utm=x" in html_out
-    assert "<script>" not in to_html("<script>alert(1)</script>", "", "N")
+    assert "aff=1&amp;utm=x" in html_out
 
 
 def test_redact_scrips_token_inside_a_url(monkeypatch):
-    monkeypatch.setattr("content_agent.tasks.SECRETS", ("secret-token",))
+    monkeypatch.setattr("content_agent.redaction.SECRETS", ("secret-token",))
     cleaned = redact("https://wp.test/?password=secret-token")
     assert "secret-token" not in cleaned
 

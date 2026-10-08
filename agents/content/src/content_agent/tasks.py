@@ -26,19 +26,13 @@ from content_agent.publish.base import (
     UnknownOutcomeError,
 )
 from content_agent.publish.registry import TARGETS, target_for
+from content_agent.redaction import redact
 from content_agent.settings import (
-    MASTODON_TOKEN,
     PUBLISH_ENABLED,
     PUBLISH_MAX_ATTEMPTS,
     PUBLISH_MAX_PER_RUN,
     PUBLISH_MIN_INTERVAL_SECONDS,
     PUBLISH_WINDOW_HOURS,
-    WORDPRESS_APP_PASSWORD,
-    X_BEARER_TOKEN,
-)
-
-SECRETS = tuple(
-    s for s in (WORDPRESS_APP_PASSWORD, X_BEARER_TOKEN, MASTODON_TOKEN) if s
 )
 
 
@@ -234,12 +228,6 @@ def _needs_review(db: Session, pub: Publication, exc: Exception) -> None:
     pub.status = PublicationStatus.NEEDS_REVIEW.value
     pub.error = redact(str(exc))
     db.commit()
-
-
-def redact(text: str) -> str:
-    for secret in SECRETS:
-        text = text.replace(secret, "***")
-    return text[:200]
 
 
 def _has_hitl_approval(db: Session, content_id: uuid.UUID) -> bool:

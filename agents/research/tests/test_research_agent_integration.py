@@ -6,6 +6,11 @@ from revenue_swarm.models.affiliate_program import AffiliateProgram
 pytestmark = pytest.mark.integration
 
 
+@pytest.fixture(autouse=True)
+def no_page_fetch(monkeypatch):
+    monkeypatch.setattr("research_agent.agent.fetch_text", lambda _url: None)
+
+
 def test_discover_creates_proposed_programs(db_session, make_task):
     task = make_task(type="research_programs", input={"limit": 3})
 

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import NoReturn, Protocol
 
 import httpx
-from content_agent.tasks import redact
+from content_agent.redaction import redact
 from revenue_swarm.models.content_item import ContentItem
 
 

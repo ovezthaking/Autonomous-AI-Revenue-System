@@ -1,7 +1,10 @@
-from app.services.webhook import logger
+import logging
+
 from content_agent.publish.base import PublishResult
 from revenue_swarm.enums import PublishTargetName
 from revenue_swarm.models.content_item import ContentItem
+
+logger = logging.getLogger(__name__)
 
 
 class DryRunTarget:

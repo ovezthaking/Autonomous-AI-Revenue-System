@@ -12,6 +12,7 @@ os.environ["DATABASE_URL"] = os.environ.get(
 )
 os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 os.environ["LLM_STUB"] = "1"
+os.environ["SEARCH_STUB"] = "1"
 os.environ.setdefault("HITL_ACTOR", "test-operator")
 os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434-test-unused"
 os.environ["OLLAMA_MODEL"] = "test-model-unused"
@@ -33,6 +34,7 @@ from revenue_swarm.models import (  # noqa: E402
     ContentItem,
     HitlDecision,
 )
+from revenue_swarm.models.publication import Publication
 
 
 def _ensure_database_exists(database_url: str) -> None:
@@ -161,6 +163,7 @@ def real_session(db_engine: Engine) -> Generator[Session]:
         yield session
     finally:
         session.rollback()
+        session.query(Publication).delete()   # <-- nowa linia, MUSI być przed ContentItem
         session.query(ContentItem).delete()
         session.query(HitlDecision).delete()
         session.query(AffiliateProgram).delete()

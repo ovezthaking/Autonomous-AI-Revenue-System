@@ -9,7 +9,7 @@ SOCIAL_DISCLOSURE = "#ad affiliate link"
 
 
 def ensure_disclosure(body: str) -> str:
-    if "affiliate_link" in body.lower():
+    if "affiliate link" in body.lower():
         return body
     return f"{DISCLOSURE}\n\n{body}"
 
@@ -28,7 +28,7 @@ def affiliate_anchor(link: str, name: str) -> str:
     safe_name = html.escape(name)
     return (
         f'<a href="{safe_link}" rel="sponsored nofollow" '
-        f'<target="_blank">{safe_name}</a>'
+        f'target="_blank">{safe_name}</a>'
     )
 
 
