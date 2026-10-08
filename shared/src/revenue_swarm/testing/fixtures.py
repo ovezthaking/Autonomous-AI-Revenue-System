@@ -163,7 +163,9 @@ def real_session(db_engine: Engine) -> Generator[Session]:
         yield session
     finally:
         session.rollback()
-        session.query(Publication).delete()   # <-- nowa linia, MUSI być przed ContentItem
+        session.query(
+            Publication
+        ).delete()  # <-- nowa linia, MUSI być przed ContentItem
         session.query(ContentItem).delete()
         session.query(HitlDecision).delete()
         session.query(AffiliateProgram).delete()

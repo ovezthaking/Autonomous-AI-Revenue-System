@@ -12,7 +12,7 @@ from revenue_swarm.models.content_item import ContentItem
 
 class MastodonTarget:
     name = PublishTargetName.MASTODON.value
-    limit = 50
+    limit = 500
 
     def publish(self, item: ContentItem) -> PublishResult:
         status_text = ensure_social_disclosure(item.body, self.limit)

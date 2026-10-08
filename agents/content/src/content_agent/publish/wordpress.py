@@ -78,7 +78,7 @@ class WordPressTarget:
         url = f"{WORDPRESS_BASE_URL}/wp-json/wp/v2/posts/{external_id}"
         with httpx.Client(timeout=30.0, auth=auth) as client:
             try:
-                response = client.post(url, json={"satus": "draft"})
+                response = client.post(url, json={"status": "draft"})
             except httpx.HTTPError as exc:
                 raise_for_transport(exc)
         raise_for_status(response)

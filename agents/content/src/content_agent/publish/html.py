@@ -14,13 +14,30 @@ def ensure_disclosure(body: str) -> str:
     return f"{DISCLOSURE}\n\n{body}"
 
 
+# def ensure_social_disclosure(body: str, limit: int) -> str:
+#     lowered = body.lower()
+#     if "#ad" in lowered or "affiliate link" in lowered:
+#         return body[:limit]
+#     suffix = f"\n{SOCIAL_DISCLOSURE}"
+#     trimmed = body[: limit - len(suffix)].rstrip()
+#     return f"{trimmed}{suffix}"
+
+
 def ensure_social_disclosure(body: str, limit: int) -> str:
     lowered = body.lower()
-    if "#ad" in lowered or "affiliate link" in lowered:
-        return body[:limit]
-    suffix = f"\n{SOCIAL_DISCLOSURE}"
-    trimmed = body[: limit - len(suffix)].rstrip()
-    return f"{trimmed}{suffix}"
+    has_disclosure = "#ad" in lowered or "affiliate link" in lowered
+    suffix = "" if has_disclosure else f"\n{SOCIAL_DISCLOSURE}"
+
+    text, sep, link = body.rpartition("\n\n")
+    if not sep or not link.startswith(("http://", "https://")):
+        text, sep, link = body, "", ""
+
+    tail = f"{sep}{link}{suffix}"
+    room = limit - len(tail)
+    if room < 1:
+        msg = "link and disclosure do not fit in the post limit"
+        raise ValueError(msg)
+    return f"{text[:room].rstrip()}{tail}"
 
 
 def affiliate_anchor(link: str, name: str) -> str:

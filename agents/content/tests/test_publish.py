@@ -9,9 +9,28 @@ from content_agent.publish.base import (
     raise_for_status,
     raise_for_transport,
 )
-from content_agent.publish.html import ensure_disclosure, to_html
+from content_agent.publish.html import (
+    ensure_disclosure,
+    ensure_social_disclosure,
+    to_html,
+)
 from content_agent.redaction import redact
 from content_agent.tasks import may_publish, reserve
+
+LINK = "https://twoj-link.example/ref?id=123"
+
+
+def test_social_disclosure_never_truncates_the_link():
+    body = "x" * 240 + "\n\n" + LINK
+    out = ensure_social_disclosure(body, 280)
+    assert len(out) <= 280
+    assert out.count(LINK) == 1
+    assert "#ad" in out.lower()
+
+
+def test_social_disclosure_rejects_when_link_cannot_fit():
+    with pytest.raises(ValueError):
+        ensure_social_disclosure("text\n\n" + LINK, 20)
 
 
 def test_reserve_inserts_in_flight(db, item):
