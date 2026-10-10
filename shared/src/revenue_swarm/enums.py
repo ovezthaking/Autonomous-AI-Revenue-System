@@ -28,6 +28,7 @@ class HitlDecisionValue(StrEnum):
 class HitlEntityType(StrEnum):
     AFFILIATE_PROGRAM = "affiliate_program"
     CONTENT_ITEM = "content_item"
+    PRODUCT = "product"
 
 
 class TaskType(StrEnum):
@@ -50,3 +51,12 @@ class PublishTargetName(StrEnum):
     WORDPRESS = "wordpress"
     MASTODON = "mastodon"
     X = "x"
+
+
+class ProductStatus(StrEnum):
+    DRAFT = "draft"
+    OUTLINED = "outlined"
+    WRITING = "writing"
+    ASSEMBLED = "assembled"
+    LIVE = "live"
+    ARCHIVED = "archived"
