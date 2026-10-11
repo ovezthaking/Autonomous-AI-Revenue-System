@@ -3,6 +3,8 @@ from revenue_swarm.models.content_item import ContentItem
 from revenue_swarm.models.hitl_decision import HitlDecision
 from revenue_swarm.models.publication import Publication
 from revenue_swarm.models.task import AgentTask
+from revenue_swarm.models.product import Product
+from revenue_swarm.models.ebook_chapter import EbookChapter
 
 __all__ = [
     "AgentTask",
@@ -10,5 +12,6 @@ __all__ = [
     "ContentItem",
     "HitlDecision",
     "Publication",
-    "Product"
+    "Product",
+    "EbookChapter"
 ]
