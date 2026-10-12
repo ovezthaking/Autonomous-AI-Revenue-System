@@ -20,3 +20,13 @@ OLLAMA_MODEL = getenv("OLLAMA_MODEL", "llama3.2:1b")
 LLM_PROVIDER = getenv("LLM_PROVIDER", "ollama")  # ollama | anthropic
 LLM_QUALITY_MODEL = getenv("LLM_QUALITY_MODEL", "claude-sonnet-4.5")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "") or ""
+
+# Storage configuration (MinIO / S3)
+STORAGE_ENDPOINT = getenv("STORAGE_ENDPOINT", "http://minio:9000")
+STORAGE_PUBLIC_ENDPOINT = getenv(
+    "STORAGE_PUBLIC_ENDPOINT", "http://localhost:9000"
+)
+STORAGE_BUCKET = getenv("STORAGE_BUCKET", "revenue-assets")
+STORAGE_ACCESS_KEY = getenv("STORAGE_ACCESS_KEY", "minio")
+STORAGE_SECRET_KEY = getenv("STORAGE_SECRET_KEY", "minio12345")
+STORAGE_REGION = getenv("STORAGE_REGION", "us-east-1")
