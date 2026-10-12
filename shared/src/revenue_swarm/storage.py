@@ -21,7 +21,7 @@ from revenue_swarm.config import (
 
 
 def _client(*, public: bool = False):
-    """Return a boto3 S3 client. """
+    """Return a boto3 S3 client."""
     endpoint = STORAGE_PUBLIC_ENDPOINT if public else STORAGE_ENDPOINT
     return boto3.client(
         "s3",
