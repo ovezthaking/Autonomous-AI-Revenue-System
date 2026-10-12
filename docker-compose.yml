@@ -155,6 +155,12 @@ services:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio12345
     ports: ["9000:9000", "9001:9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
     volumes:
       - "minio_data:/data"
 
