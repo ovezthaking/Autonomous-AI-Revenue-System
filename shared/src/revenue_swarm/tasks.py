@@ -16,24 +16,24 @@ class TaskName(StrEnum):
     CONTENT_GENERATE = "content.generate"
     CONTENT_PUBLISH_DUE = "content.publish_due"
     CONTENT_RETRACT = "content.retract"
+    EBOOK_PROPOSE = "ebook.propose_topics"
+    EBOOK_OUTLINE = "ebook.outline"
+    EBOOK_WRITE = "ebook.write"
+    EBOOK_ASSEMBLE = "ebook.assemble"
 
 
 class Queue(StrEnum):
     DEFAULT = "celery"
     RESEARCH = "research"
     CONTENT = "content"
+    EBOOK = "ebook"
 
 
 Handler = Callable[[Session, AgentTask], dict[str, object]]
 
 
 def run_agent_task(task_id: str, handler: Handler) -> None:
-    """Runs `handler` inside the standard agent-task lifecycle.
-
-    Marks the row as running, stores whatever the handler returns in
-    `output`, and on failure records the error before re-raising so Celery
-    still sees the task as failed.
-    """
+    """Runs `handler` inside the standard agent-task lifecycle."""
     db = SessionLocal()
     try:
         row = db.get(AgentTask, uuid.UUID(task_id))

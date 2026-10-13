@@ -89,3 +89,16 @@ def structured[T: BaseModel](prompt: str, schema: type[T]) -> T | None:
     if isinstance(result, schema):
         return result
     return None
+
+
+def chat_with_usage(prompt: str, temperature: float = 0.2) -> tuple[str, int]:
+    """Returns (text, total_tokens) from the configured chat model."""
+    if LLM_STUB:
+        return STUB_TEXT, 0
+    message = _chat_model(temperature).invoke(prompt)
+    text = str(message.content).strip()
+    usage = getattr(message, "usage_metadata", None) or {}
+    tokens = int(usage.get("total_tokens") or 0)
+    if tokens == 0:
+        tokens = (len(prompt) + len(text)) // 4
+    return text, tokens
