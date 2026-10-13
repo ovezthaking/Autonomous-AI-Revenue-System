@@ -55,6 +55,7 @@ class PublishTargetName(StrEnum):
 
 class ProductStatus(StrEnum):
     DRAFT = "draft"
+    OUTLINING = "outlining"
     OUTLINED = "outlined"
     WRITING = "writing"
     ASSEMBLED = "assembled"
