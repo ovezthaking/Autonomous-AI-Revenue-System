@@ -3,7 +3,7 @@ name = "ebook-agent"
 version = "0.1.0"
 description = "Ebook agent: outline, write, and assemble a book"
 requires-python = ">=3.12"
-dependencies = ["revenue-swarm-shared", "pypdf"]
+dependencies = ["revenue-swarm-shared", "pypdf", "weasyprint"]
 
 [tool.uv.sources]
 revenue-swarm-shared = { workspace = true }
@@ -14,3 +14,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ebook_agent"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
