@@ -1,0 +1,12 @@
+@page { size: A5; margin: 2cm; }
+body { font-family: "DejaVu Serif", serif; font-size: 10.5pt; line-height: 1.5; }
+h1 { page-break-before: always; font-size: 20pt; margin-bottom: 1em; }
+h2 { font-size: 14pt; margin-top: 1.5em; }
+p { text-align: justify; }
+section.cover {
+  page-break-after: always;
+  text-align: center;
+  padding-top: 30%;
+}
+section.cover h1 { page-break-before: avoid; font-size: 28pt; }
+section.cover p { font-size: 14pt; color: #555; }
