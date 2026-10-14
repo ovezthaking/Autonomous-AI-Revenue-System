@@ -32,7 +32,9 @@ from revenue_swarm.models import (  # noqa: E402
     AffiliateProgram,
     AgentTask,
     ContentItem,
+    EbookChapter,
     HitlDecision,
+    Product,
 )
 from revenue_swarm.models.publication import Publication
 
@@ -163,6 +165,8 @@ def real_session(db_engine: Engine) -> Generator[Session]:
         yield session
     finally:
         session.rollback()
+        session.query(EbookChapter).delete()
+        session.query(Product).delete()
         session.query(
             Publication
         ).delete()  # <-- nowa linia, MUSI być przed ContentItem
