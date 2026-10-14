@@ -14,7 +14,6 @@ def ensure_disclosure(body: str) -> str:
     return f"{DISCLOSURE}\n\n{body}"
 
 
-
 def ensure_social_disclosure(body: str, limit: int) -> str:
     lowered = body.lower()
     has_disclosure = "#ad" in lowered or "affiliate link" in lowered
