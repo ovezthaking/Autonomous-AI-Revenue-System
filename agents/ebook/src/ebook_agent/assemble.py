@@ -9,7 +9,7 @@ from revenue_swarm.models.ebook_chapter import EbookChapter
 from revenue_swarm.models.product import Product
 
 CSS_PATH = Path(__file__).parent / "style.css"
-MIN_PDF_BYTES = 50_000
+MIN_PDF_BYTES = 5_000
 
 
 def cover_html(product: Product) -> str:
