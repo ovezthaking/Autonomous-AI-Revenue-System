@@ -61,8 +61,9 @@ def test_approve_draft_twice_is_409_and_queues_once(
 ):
     product = _product(db_session)
 
-    first = client.post(f"/products/{product.id}/approve")
-    second = client.post(f"/products/{product.id}/approve")
+    body = {"expected_status": "draft"}
+    first = client.post(f"/products/{product.id}/approve", json=body)
+    second = client.post(f"/products/{product.id}/approve", json=body)
 
     assert first.status_code == 200
     assert first.json()["status"] == "outlining"
@@ -73,11 +74,12 @@ def test_approve_draft_twice_is_409_and_queues_once(
 def test_review_then_approve_goes_live(client, db_session):
     product = _product(db_session, status="assembled")
 
-    blocked = client.post(f"/products/{product.id}/approve")
+    body = {"expected_status": "assembled"}
+    blocked = client.post(f"/products/{product.id}/approve", json=body)
     review = client.post(
         f"/products/{product.id}/review", json={"reviewer": "ovezo"}
     )
-    live = client.post(f"/products/{product.id}/approve")
+    live = client.post(f"/products/{product.id}/approve", json=body)
 
     assert blocked.status_code == 409
     assert review.status_code == 200
@@ -113,3 +115,42 @@ def test_unknown_product_is_404(client):
     response = client.get("/products/00000000-0000-0000-0000-000000000000")
 
     assert response.status_code == 404
+
+
+def test_approve_requires_expected_status(client, db_session):
+    product = _product(db_session)
+
+    response = client.post(f"/products/{product.id}/approve")
+
+    assert response.status_code == 422
+
+
+def test_stale_approve_does_not_approve_the_next_step(
+    client, db_session, no_celery_broker
+):
+    """The human saw `draft`; by the time the click arrives the outline is
+    ready. That click must not silently approve the outline."""
+    product = _product(db_session, status="outlined")
+
+    response = client.post(
+        f"/products/{product.id}/approve", json={"expected_status": "draft"}
+    )
+
+    assert response.status_code == 409
+    db_session.refresh(product)
+    assert product.status == "outlined"
+    assert no_celery_broker == []
+
+
+def test_reject_is_also_bound_to_the_status_the_human_saw(client, db_session):
+    product = _product(db_session, status="outlined")
+
+    stale = client.post(
+        f"/products/{product.id}/reject", json={"expected_status": "draft"}
+    )
+    fresh = client.post(
+        f"/products/{product.id}/reject", json={"expected_status": "outlined"}
+    )
+
+    assert stale.status_code == 409
+    assert fresh.json()["status"] == "archived"
