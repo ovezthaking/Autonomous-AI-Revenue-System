@@ -6,3 +6,4 @@ cd "$(dirname "$0")/.."
 uv run --directory backend --package revenue-swarm-backend pytest
 uv run --directory agents/research --package research-agent pytest
 uv run --directory agents/content --package content-agent pytest
+uv run --directory agents/ebook --package ebook-agent pytest
