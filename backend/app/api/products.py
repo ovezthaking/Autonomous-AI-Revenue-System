@@ -12,9 +12,9 @@ from revenue_swarm.tasks import TaskName
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.schemas.affiliate_program import HitlAction
 from app.schemas.product import (
     ChapterRead,
+    ProductDecision,
     ProductProposeCreate,
     ProductRead,
     ProductReview,
@@ -69,25 +69,27 @@ def list_chapters(product_id: uuid.UUID, db: DbSession) -> list[EbookChapter]:
 
 @router.post("/{product_id}/approve", response_model=ProductRead)
 def approve_product(
-    product_id: uuid.UUID, db: DbSession, body: HitlAction | None = None
+    product_id: uuid.UUID, db: DbSession, body: ProductDecision
 ) -> Product:
     return decide_product(
         db,
         product_id,
         HitlDecisionValue.APPROVED,
-        body.comment if body else None,
+        body.comment,
+        body.expected_status,
     )
 
 
 @router.post("/{product_id}/reject", response_model=ProductRead)
 def reject_product(
-    product_id: uuid.UUID, db: DbSession, body: HitlAction | None = None
+    product_id: uuid.UUID, db: DbSession, body: ProductDecision
 ) -> Product:
     return decide_product(
         db,
         product_id,
         HitlDecisionValue.REJECTED,
-        body.comment if body else None,
+        body.comment,
+        body.expected_status,
     )
 
 
