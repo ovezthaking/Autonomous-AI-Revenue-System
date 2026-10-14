@@ -37,6 +37,30 @@ _COMMISSION_TYPES = {
 MAX_CHARS = 12_000
 
 
+def _parse_stub_network(
+    lowered: str, network_name: re.Match[str] | None
+) -> str | None:
+    if "no network" in lowered or "managed directly" in lowered:
+        return "direct"
+    if network_name:
+        return network_name.group(1).lower()
+    return None
+
+
+def _parse_stub_commission(
+    flat: re.Match[str] | None,
+    percent: re.Match[str] | None,
+    lowered: str,
+) -> tuple[str, float | None]:
+    if flat:
+        return "flat_one_time", float(flat.group(1))
+    if percent and "recurring" in lowered:
+        return "percent_recurring", float(percent.group(1))
+    if percent and "one-time" in lowered:
+        return "percent_one_time", float(percent.group(1))
+    return "unknown", None
+
+
 def _facts_from_stub(hit: SearchHit) -> ProgramFacts:
     text = hit.raw_content or ""
     percent = re.search(r"(\d+(?:\.\d+)?)%", text)
@@ -45,24 +69,12 @@ def _facts_from_stub(hit: SearchHit) -> ProgramFacts:
     payout = re.search(r"Payouts from \$(\d+(?:\.\d+)?)", text)
     network_name = re.search(r"Network:\s*([A-Za-z]+)", text)
     lowered = text.lower()
-    if "no network" in lowered or "managed directly" in lowered:
-        network = "direct"
-    elif network_name:
-        network = network_name.group(1).lower()
-    else:
-        network = None
-    if flat:
-        commission_type = "flat_one_time"
-        commission_value = float(flat.group(1))
-    elif percent and "recurring" in lowered:
-        commission_type = "percent_recurring"
-        commission_value = float(percent.group(1))
-    elif percent and "one-time" in lowered:
-        commission_type = "percent_one_time"
-        commission_value = float(percent.group(1))
-    else:
-        commission_type = "unknown"
-        commission_value = None
+
+    network = _parse_stub_network(lowered, network_name)
+    commission_type, commission_value = _parse_stub_commission(
+        flat, percent, lowered
+    )
+
     return ProgramFacts(
         program_name=hit.title or "Unknown",
         commission_type=commission_type,
