@@ -166,7 +166,9 @@ services:
     restart: unless-stopped
   
   minio:
-    image: minio/minio
+    # minio/minio is no longer published; pgsty/silo is a drop-in fork.
+    # Dev-only
+    image: pgsty/silo:latest
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minio
