@@ -166,3 +166,41 @@ def test_decide_product_raises_404_when_missing():
         decide_product(db, uuid.uuid4(), HitlDecisionValue.APPROVED, None)
 
     assert exc_info.value.status_code == 404
+
+
+def test_expected_status_mismatch_is_refused_without_side_effects(
+    no_celery_broker,
+):
+    product = _product(ProductStatus.OUTLINED.value)
+    db = MagicMock()
+    db.get.return_value = product
+
+    with pytest.raises(HTTPException) as exc_info:
+        decide_product(
+            db,
+            product.id,
+            HitlDecisionValue.APPROVED,
+            None,
+            expected_status=ProductStatus.DRAFT.value,
+        )
+
+    assert exc_info.value.status_code == 409
+    assert product.status == ProductStatus.OUTLINED.value
+    db.commit.assert_not_called()
+    assert no_celery_broker == []
+
+
+def test_expected_status_match_is_applied(no_celery_broker):
+    product = _product(ProductStatus.DRAFT.value)
+    db = MagicMock()
+    db.get.return_value = product
+
+    result = decide_product(
+        db,
+        product.id,
+        HitlDecisionValue.APPROVED,
+        None,
+        expected_status=ProductStatus.DRAFT.value,
+    )
+
+    assert result.status == ProductStatus.OUTLINING.value
