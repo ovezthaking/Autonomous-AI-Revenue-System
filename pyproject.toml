@@ -43,4 +43,5 @@ extraPaths = [
     "backend",
     "agents/content/src",
     "agents/research/src",
+    "agents/ebook/src",
 ]

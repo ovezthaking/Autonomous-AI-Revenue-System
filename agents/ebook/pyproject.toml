@@ -17,4 +17,7 @@ packages = ["src/ebook_agent"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: requires a live Postgres instance",
+]
 addopts = "-ra --strict-markers"
