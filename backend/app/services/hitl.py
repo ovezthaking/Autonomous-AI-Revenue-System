@@ -123,6 +123,7 @@ def decide_product(
     product_id: uuid.UUID,
     decision: HitlDecisionValue,
     comment: str | None,
+    expected_status: str | None = None,
 ) -> Product:
     """Gate for the ebook pipeline.
 
@@ -135,6 +136,11 @@ def decide_product(
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL
+        )
+    if expected_status is not None and row.status != expected_status:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Product is {row.status}, not {expected_status}",
         )
     # approve gets a 409 instead of enqueueing the outline twice.
     if row.status not in _DECIDABLE_PRODUCT_STATUSES:
