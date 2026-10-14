@@ -2,9 +2,14 @@ FROM python:3.14-slim-bookworm
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /uvx /bin/
 
-# pandoc + pango/cairo/fonts for WeasyPrint (no LaTeX on purpose)
+# pandoc + pango/cairo/harfbuzz/fonts for WeasyPrint (no LaTeX on purpose)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    pandoc libpango-1.0-0 libpangoft2-1.0-0 libcairo2 fonts-dejavu \
+    fonts-dejavu \
+    libcairo2 \
+    libharfbuzz-subset0 \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    pandoc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
