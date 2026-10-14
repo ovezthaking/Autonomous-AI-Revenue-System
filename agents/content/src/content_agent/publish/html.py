@@ -14,14 +14,6 @@ def ensure_disclosure(body: str) -> str:
     return f"{DISCLOSURE}\n\n{body}"
 
 
-# def ensure_social_disclosure(body: str, limit: int) -> str:
-#     lowered = body.lower()
-#     if "#ad" in lowered or "affiliate link" in lowered:
-#         return body[:limit]
-#     suffix = f"\n{SOCIAL_DISCLOSURE}"
-#     trimmed = body[: limit - len(suffix)].rstrip()
-#     return f"{trimmed}{suffix}"
-
 
 def ensure_social_disclosure(body: str, limit: int) -> str:
     lowered = body.lower()

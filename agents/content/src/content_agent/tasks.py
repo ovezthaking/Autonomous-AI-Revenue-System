@@ -45,26 +45,6 @@ def generate_content_task(task_id: str) -> None:
     run_agent_task(task_id, handler)
 
 
-# @celery_app.task(name=TaskName.CONTENT_PUBLISH_DUE.value)
-# def publish_due_task() -> int:
-#     db = SessionLocal()
-#     try:
-#         now = datetime.now(UTC)
-#         stmt = select(ContentItem).where(
-#             ContentItem.status == ContentStatus.SCHEDULED.value,
-#             ContentItem.scheduled_for.is_not(None),
-#             ContentItem.scheduled_for <= now,
-#         )
-#         rows = list(db.scalars(stmt).all())
-#         for row in rows:
-#             row.status = ContentStatus.PUBLISHED.value
-#             row.published_at = now
-#         db.commit()
-#         return len(rows)
-#     finally:
-#         db.close()
-
-
 @celery_app.task(
     name=TaskName.CONTENT_PUBLISH_DUE.value,
     soft_time_limit=300,
