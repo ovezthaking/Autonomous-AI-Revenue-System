@@ -4,6 +4,7 @@ import unicodedata
 import uuid
 from pathlib import Path
 
+from celery.exceptions import SoftTimeLimitExceeded
 from celery.utils.log import logger
 from revenue_swarm import storage
 from revenue_swarm.celery import celery_app
@@ -246,6 +247,8 @@ def write_task(product_id: str, retry_failed: bool = False) -> dict:
 
         budget_exhausted = False
         for chapter in _pending_chapters(db, product.id):
+            chapter_id = chapter.id
+            position = chapter.position
             try:
                 body, tokens = write_chapter(
                     db, product, chapter, context=_recap(db, product.id)
@@ -256,11 +259,15 @@ def write_task(product_id: str, retry_failed: bool = False) -> dict:
             except BudgetExhaustedError:
                 budget_exhausted = True
                 break
+            except SoftTimeLimitExceeded:
+                db.rollback()
+                raise
             except Exception as e:  # noqa: BLE001 — one bad chapter != dead book
                 db.rollback()
-                chapter.status = "failed"
-                chapter.error = redact(str(e))
-                logger.warning("chapter %s failed", chapter.position)
+                failed = db.get(EbookChapter, chapter_id)
+                failed.status = "failed"
+                failed.error = redact(str(e))
+                logger.warning("chapter %s failed", position)
             db.commit()  # commit after EVERY chapter
 
         summary = _summary(db, product.id)
