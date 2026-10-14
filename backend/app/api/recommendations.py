@@ -19,6 +19,7 @@ from app.services.hitl import decide_program
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 DbSession = Annotated[Session, Depends(get_db)]
+NOT_FOUND_DETAIL = "Not found"
 
 
 @router.post("", response_model=RecommendationRead, status_code=201)
@@ -61,7 +62,7 @@ def get_recommendation(
     row = db.get(AffiliateProgram, program_id)
     if row is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL
         )
     return row
 
@@ -91,7 +92,7 @@ def set_affiliate_link(
     row = db.get(AffiliateProgram, program_id)
     if row is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL
         )
     if row.status != ProgramStatus.APPROVED.value:
         raise HTTPException(
@@ -111,7 +112,7 @@ def update_program_metrics(
     row = db.get(AffiliateProgram, program_id)
     if row is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL
         )
     row.extras = {
         **(row.extras or {}),
