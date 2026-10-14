@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from app.schemas.affiliate_program import HitlAction
 from pydantic import BaseModel, Field
 
 
@@ -42,3 +43,9 @@ class ProductProposeCreate(BaseModel):
 
 class ProductReview(BaseModel):
     reviewer: str = Field(min_length=1, max_length=200)
+
+
+class ProductDecision(HitlAction):
+    """Approve/reject body; binds the decision to what the human saw."""
+
+    expected_status: str = Field(min_length=1)
