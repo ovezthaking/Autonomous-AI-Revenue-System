@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from revenue_swarm import storage
 from revenue_swarm.celery import celery_app
 from revenue_swarm.db import get_db
 from revenue_swarm.enums import HitlDecisionValue, ProductStatus
@@ -131,3 +132,20 @@ def retry_failed_chapters(
         TaskName.EBOOK_WRITE, args=[str(row.id)], kwargs={"retry_failed": True}
     )
     return {"status": "queued"}
+
+
+@router.get("/{product_id}/asset-url")
+def get_product_asset_url(
+    product_id: uuid.UUID,
+    db: DbSession,
+    asset_type: str = Query(pattern="^(pdf|epub)$"),
+) -> dict[str, str]:
+    """Return a presigned download URL for the requested asset."""
+    row = _get_product(db, product_id)
+    key = row.asset_pdf if asset_type == "pdf" else row.asset_epub
+    if not key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{asset_type.upper()} asset not found",
+        )
+    return {"url": storage.presigned_url(key)}

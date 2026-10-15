@@ -154,3 +154,25 @@ def test_reject_is_also_bound_to_the_status_the_human_saw(client, db_session):
 
     assert stale.status_code == 409
     assert fresh.json()["status"] == "archived"
+
+
+def test_get_asset_url_returns_presigned_url(client, db_session, monkeypatch):
+    monkeypatch.setattr(
+        "revenue_swarm.storage.presigned_url",
+        lambda key, expires_in=300: f"http://test-presigned/{key}",
+    )
+    product = _product(db_session, status="assembled")
+    product.asset_pdf = "ebooks/test.pdf"
+    db_session.commit()
+
+    res = client.get(
+        f"/products/{product.id}/asset-url", params={"asset_type": "pdf"}
+    )
+    assert res.status_code == 200
+    assert res.json() == {"url": "http://test-presigned/ebooks/test.pdf"}
+
+    # 404 for missing epub
+    res_epub = client.get(
+        f"/products/{product.id}/asset-url", params={"asset_type": "epub"}
+    )
+    assert res_epub.status_code == 404
