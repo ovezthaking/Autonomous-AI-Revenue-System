@@ -64,6 +64,33 @@ export type Publication = {
   updated_at: string;
 };
 
+export type Product = {
+  id: string;
+  kind: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  price_cents: number;
+  currency: string;
+  status: string;
+  asset_pdf: string | null;
+  asset_epub: string | null;
+  extras: Record<string, unknown> | null;
+  updated_at: string;
+  created_at: string;
+};
+
+export type Chapter = {
+  id: string;
+  position: number;
+  title: string;
+  brief: string;
+  status: string;
+  error: string | null;
+  tokens_used: number | null;
+};
+
 const parse = async <T>(res: Response): Promise<T> => {
   if (!res.ok) {
     const detail = await res.text();
@@ -186,4 +213,84 @@ export const resolvePublication = async (
     }),
   });
   await parse(res);
+};
+
+export const fetchProducts = async (
+  status?: string,
+): Promise<Array<Product>> => {
+  const url = status
+    ? `${API}/products?status=${encodeURIComponent(status)}`
+    : `${API}/products`;
+  const res = await fetch(url, { cache: "no-store" });
+  return parse<Array<Product>>(res);
+};
+
+export const fetchProductChapters = async (
+  productId: string,
+): Promise<Array<Chapter>> => {
+  const res = await fetch(`${API}/products/${productId}/chapters`, {
+    cache: "no-store",
+  });
+  return parse<Array<Chapter>>(res);
+};
+
+export const proposeProducts = async (
+  niche: string,
+): Promise<{ status: string }> => {
+  const res = await fetch(`${API}/products/propose`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ niche }),
+  });
+  return parse<{ status: string }>(res);
+};
+
+export const decideProduct = async (
+  id: string,
+  action: "approve" | "reject",
+  expectedStatus: string,
+  comment?: string,
+): Promise<Product> => {
+  const res = await fetch(`${API}/products/${id}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      expected_status: expectedStatus,
+      comment: comment ?? null,
+    }),
+  });
+  return parse<Product>(res);
+};
+
+export const recordProductReview = async (
+  id: string,
+  reviewer: string,
+): Promise<Product> => {
+  const res = await fetch(`${API}/products/${id}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reviewer }),
+  });
+  return parse<Product>(res);
+};
+
+export const retryProductChapters = async (
+  id: string,
+): Promise<{ status: string }> => {
+  const res = await fetch(`${API}/products/${id}/retry-chapters`, {
+    method: "POST",
+  });
+  return parse<{ status: string }>(res);
+};
+
+export const fetchProductAssetUrl = async (
+  id: string,
+  assetType: "pdf" | "epub",
+): Promise<string> => {
+  const res = await fetch(
+    `${API}/products/${id}/asset-url?asset_type=${encodeURIComponent(assetType)}`,
+    { cache: "no-store" },
+  );
+  const data = await parse<{ url: string }>(res);
+  return data.url;
 };
