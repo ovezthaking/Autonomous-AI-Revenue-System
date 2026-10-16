@@ -44,4 +44,6 @@ extraPaths = [
     "agents/content/src",
     "agents/research/src",
     "agents/ebook/src",
+    "agents/sales/src",
 ]
+
