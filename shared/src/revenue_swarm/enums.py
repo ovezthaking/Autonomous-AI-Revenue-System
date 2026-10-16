@@ -61,3 +61,11 @@ class ProductStatus(StrEnum):
     ASSEMBLED = "assembled"
     LIVE = "live"
     ARCHIVED = "archived"
+
+
+class OrderStatus(StrEnum):
+    PENDING = "pending"
+    PAID = "paid"
+    FULFILLED = "fulfilled"
+    REFUNDED = "refunded"
+    FAILED = "failed"
