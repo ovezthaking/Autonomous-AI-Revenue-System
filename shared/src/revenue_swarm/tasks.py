@@ -20,6 +20,8 @@ class TaskName(StrEnum):
     EBOOK_OUTLINE = "ebook.outline"
     EBOOK_WRITE = "ebook.write"
     EBOOK_ASSEMBLE = "ebook.assemble"
+    SALES_FULFILL = "sales.fulfill"
+    SALES_REFUND = "sales.refund"
 
 
 class Queue(StrEnum):
@@ -27,6 +29,7 @@ class Queue(StrEnum):
     RESEARCH = "research"
     CONTENT = "content"
     EBOOK = "ebook"
+    SALES = "sales"
 
 
 Handler = Callable[[Session, AgentTask], dict[str, object]]

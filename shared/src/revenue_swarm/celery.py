@@ -15,6 +15,8 @@ celery_app.conf.task_routes = {
     TaskName.EBOOK_OUTLINE.value: {"queue": Queue.EBOOK.value},
     TaskName.EBOOK_WRITE.value: {"queue": Queue.EBOOK.value},
     TaskName.EBOOK_ASSEMBLE.value: {"queue": Queue.EBOOK.value},
+    TaskName.SALES_FULFILL.value: {"queue": Queue.SALES.value},
+    TaskName.SALES_REFUND.value: {"queue": Queue.SALES.value},
 }
 celery_app.conf.beat_schedule = {
     "publish-due-every-5-min": {

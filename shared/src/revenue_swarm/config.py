@@ -36,3 +36,25 @@ EBOOK_ENABLED = getenv("EBOOK_ENABLED", "1") == "1"
 EBOOK_MAX_CHAPTERS = int(getenv("EBOOK_MAX_CHAPTERS", "12"))
 EBOOK_MAX_TOKENS_PER_BOOK = int(getenv("EBOOK_MAX_TOKENS_PER_BOOK", "200000"))
 EBOOK_MIN_HUMAN_REVIEW = getenv("EBOOK_MIN_HUMAN_REVIEW", "1") == "1"
+
+# Sales & Monetization
+SALES_ENABLED = getenv("SALES_ENABLED", "0") == "1"
+PAYMENT_PROVIDER = getenv("PAYMENT_PROVIDER", "fake")
+PAYMENT_MODE = getenv("PAYMENT_MODE", "test")
+PAYMENT_WEBHOOK_SECRET = os.getenv("PAYMENT_WEBHOOK_SECRET", "") or ""
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "") or ""
+LEMONSQUEEZY_API_KEY = os.getenv("LEMONSQUEEZY_API_KEY", "") or ""
+LS_STORE_ID = os.getenv("LS_STORE_ID", "") or ""
+FAKE_WEBHOOK_SECRET = getenv("FAKE_WEBHOOK_SECRET", "dev-only")
+
+# Email & Delivery
+EMAIL_PROVIDER = getenv("EMAIL_PROVIDER", "console")
+EMAIL_FROM = (
+    os.getenv("EMAIL_FROM", "noreply@example.com") or "noreply@example.com"
+)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "") or ""
+PUBLIC_BASE_URL = getenv("PUBLIC_BASE_URL", "http://localhost:3000")
+SUCCESS_URL = getenv("SUCCESS_URL", "http://localhost:3000/p/success")
+CANCEL_URL = getenv("CANCEL_URL", "http://localhost:3000/p/cancel")
+DOWNLOAD_TOKEN_TTL_DAYS = int(getenv("DOWNLOAD_TOKEN_TTL_DAYS", "30"))
+DOWNLOAD_MAX_PER_GRANT = int(getenv("DOWNLOAD_MAX_PER_GRANT", "5"))
