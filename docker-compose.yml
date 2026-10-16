@@ -129,6 +129,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  sales-worker:
+    build:
+      context: .
+      dockerfile: agents/sales/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+
   beat:
     build:
       context: .

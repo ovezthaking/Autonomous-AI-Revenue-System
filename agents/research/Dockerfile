@@ -15,6 +15,8 @@ COPY backend/pyproject.toml backend/pyproject.toml
 COPY agents/research/pyproject.toml agents/research/pyproject.toml
 COPY agents/content/pyproject.toml agents/content/pyproject.toml
 COPY agents/ebook/pyproject.toml agents/ebook/pyproject.toml
+COPY agents/sales/pyproject.toml agents/sales/pyproject.toml
+
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-workspace --package research-agent
