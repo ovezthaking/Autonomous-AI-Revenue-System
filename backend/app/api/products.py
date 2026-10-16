@@ -51,6 +51,63 @@ def propose_products(body: ProductProposeCreate) -> dict[str, str]:
     return {"status": "queued"}
 
 
+@router.get("/live", response_model=list[ProductRead])
+def list_live_products(db: DbSession) -> list[Product]:
+    """Return all LIVE products for the public store catalog."""
+    return list(
+        db.scalars(
+            select(Product)
+            .where(Product.status == ProductStatus.LIVE.value)
+            .order_by(Product.created_at.desc())
+        ).all()
+    )
+
+
+@router.get("/by-slug/{slug}", response_model=ProductRead)
+def get_product_by_slug(slug: str, db: DbSession) -> Product:
+    row = db.scalar(select(Product).where(Product.slug == slug))
+    if row is None or row.status != ProductStatus.LIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+    return row
+
+
+@router.get("/by-slug/{slug}/sample")
+def get_product_sample(slug: str, db: DbSession) -> dict[str, object]:
+    """Return the table of contents and first chapter sample for a product."""
+    row = db.scalar(select(Product).where(Product.slug == slug))
+    if row is None or row.status != ProductStatus.LIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+    chapters = list(
+        db.scalars(
+            select(EbookChapter)
+            .where(EbookChapter.product_id == row.id)
+            .order_by(EbookChapter.position.asc())
+        ).all()
+    )
+    first = chapters[0] if chapters else None
+    return {
+        "slug": row.slug,
+        "title": row.title,
+        "chapters": [
+            {"position": c.position, "title": c.title, "brief": c.brief}
+            for c in chapters
+        ],
+        "sample_chapter": (
+            {
+                "position": first.position,
+                "title": first.title,
+                "body": first.body or first.brief,
+            }
+            if first
+            else None
+        ),
+    }
+
+
 @router.get("/{product_id}", response_model=ProductRead)
 def get_product(product_id: uuid.UUID, db: DbSession) -> Product:
     return _get_product(db, product_id)
@@ -121,7 +178,7 @@ def record_review(
 def retry_failed_chapters(
     product_id: uuid.UUID, db: DbSession
 ) -> dict[str, str]:
-    """Re-queues only the chapters that failed (errata #2)."""
+    """Re-queues only the chapters that failed."""
     row = _get_product(db, product_id)
     if row.status != ProductStatus.WRITING.value:
         raise HTTPException(
