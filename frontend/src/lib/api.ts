@@ -294,3 +294,123 @@ export const fetchProductAssetUrl = async (
   const data = await parse<{ url: string }>(res);
   return data.url;
 };
+
+export type Order = {
+  id: string;
+  product_id: string;
+  provider: string;
+  provider_session_id: string;
+  provider_payment_id: string | null;
+  email: string | null;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  consent_immediate_delivery: boolean;
+  fulfilled_at: string | null;
+  extras: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProductSample = {
+  slug: string;
+  title: string;
+  chapters: Array<{ position: number; title: string; brief: string }>;
+  sample_chapter: {
+    position: number;
+    title: string;
+    body: string;
+  } | null;
+};
+
+export type DownloadVerification = {
+  status: string;
+  title: string;
+  slug: string;
+  downloads_used: number;
+  max_downloads: number;
+  remaining_downloads: number;
+  expires_at: string;
+};
+
+export const fetchOrders = async (): Promise<Array<Order>> => {
+  const res = await fetch(`${API}/orders`, { cache: "no-store" });
+  return parse<Array<Order>>(res);
+};
+
+export const fetchOrderBySession = async (
+  sessionId: string,
+): Promise<{ id: string; status: string }> => {
+  const res = await fetch(
+    `${API}/orders/by-session/${encodeURIComponent(sessionId)}`,
+    { cache: "no-store" },
+  );
+  return parse<{ id: string; status: string }>(res);
+};
+
+export const fetchLiveProducts = async (): Promise<Array<Product>> => {
+  const res = await fetch(`${API}/products/live`, { cache: "no-store" });
+  return parse<Array<Product>>(res);
+};
+
+export const fetchProductBySlug = async (slug: string): Promise<Product> => {
+  const res = await fetch(
+    `${API}/products/by-slug/${encodeURIComponent(slug)}`,
+    { cache: "no-store" },
+  );
+  return parse<Product>(res);
+};
+
+export const fetchProductSample = async (
+  slug: string,
+): Promise<ProductSample> => {
+  const res = await fetch(
+    `${API}/products/by-slug/${encodeURIComponent(slug)}/sample`,
+    { cache: "no-store" },
+  );
+  return parse<ProductSample>(res);
+};
+
+export const createCheckout = async (
+  slug: string,
+  consentImmediateDelivery: boolean = true,
+): Promise<{ url: string; session_id: string }> => {
+  const res = await fetch(`${API}/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      slug,
+      consent_immediate_delivery: consentImmediateDelivery,
+    }),
+  });
+  return parse<{ url: string; session_id: string }>(res);
+};
+
+export const verifyDownloadToken = async (
+  token: string,
+): Promise<DownloadVerification> => {
+  const res = await fetch(`${API}/download/${encodeURIComponent(token)}`, {
+    cache: "no-store",
+  });
+  return parse<DownloadVerification>(res);
+};
+
+export const consumeDownloadToken = async (
+  token: string,
+): Promise<{
+  url: string;
+  downloads_used: number;
+  max_downloads: number;
+  remaining_downloads: number;
+}> => {
+  const res = await fetch(`${API}/download/${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { Accept: "application/json" },
+  });
+  return parse<{
+    url: string;
+    downloads_used: number;
+    max_downloads: number;
+    remaining_downloads: number;
+  }>(res);
+};

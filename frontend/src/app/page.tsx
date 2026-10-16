@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable security/detect-object-injection */
 
+import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import {
   decide,
@@ -8,6 +9,7 @@ import {
   decideProduct,
   fetchContent,
   fetchNeedsReview,
+  fetchOrders,
   fetchProductAssetUrl,
   fetchProductChapters,
   fetchProducts,
@@ -26,6 +28,7 @@ import {
   type AgentTask,
   type Chapter,
   type ContentItem,
+  type Order,
   type Product,
   type Recommendation,
   type ResearchError,
@@ -101,6 +104,7 @@ export default function DashboardPage() {
   const [content, setContent] = useState<ContentItem[]>([]);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [running, setRunning] = useState<boolean>(false);
@@ -123,7 +127,7 @@ export default function DashboardPage() {
     Record<string, boolean>
   >({});
   const [activeTab, setActiveTab] = useState<
-    "all" | "products" | "programs" | "content"
+    "all" | "products" | "orders" | "programs" | "content"
   >("all");
 
   const reload = useCallback(async () => {
@@ -134,6 +138,7 @@ export default function DashboardPage() {
       taskRows,
       reviewRows,
       productRows,
+      orderRows,
     ] = await Promise.all([
       fetchRecommendations("proposed"),
       fetchRecommendations("approved"),
@@ -141,6 +146,7 @@ export default function DashboardPage() {
       fetchRecentTasks(),
       fetchNeedsReview(),
       fetchProducts(),
+      fetchOrders(),
     ]);
     setProposed(proposedRows);
     setApproved(approvedRows);
@@ -148,6 +154,7 @@ export default function DashboardPage() {
     setTasks(taskRows);
     setNeedsReview(reviewRows);
     setProducts(productRows);
+    setOrders(orderRows);
   }, []);
 
   useEffect(() => {
@@ -441,6 +448,20 @@ export default function DashboardPage() {
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab("orders")}
+          className={`rounded px-3 py-1.5 transition-colors flex items-center gap-1.5 ${
+            activeTab === "orders"
+              ? "bg-neutral-900 text-white font-medium"
+              : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+          }`}
+        >
+          <span>Orders</span>
+          <span className="rounded-full bg-neutral-200 px-1.5 py-0.2 text-xs text-neutral-800">
+            {orders.length}
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab("programs")}
           className={`rounded px-3 py-1.5 transition-colors flex items-center gap-1.5 ${
             activeTab === "programs"
@@ -521,7 +542,7 @@ export default function DashboardPage() {
         </section>
       ) : null}
 
-      {/* E-BOOKS & PRODUCTS (Phase 8A) */}
+      {/* E-BOOKS & PRODUCTS */}
       {activeTab === "all" || activeTab === "products" ? (
         <section className="space-y-4 rounded-lg border bg-neutral-50/60 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -878,6 +899,12 @@ export default function DashboardPage() {
                             <span className="rounded bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
                               Ready for Sale
                             </span>
+                            <Link
+                              href={`/p/${p.slug}`}
+                              className="rounded border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                            >
+                              Store Page (/p/{p.slug})
+                            </Link>
                             <Button
                               size="sm"
                               variant="destructive"
@@ -896,6 +923,71 @@ export default function DashboardPage() {
                           </span>
                         ) : null}
                       </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {/* ORDERS */}
+      {activeTab === "all" || activeTab === "orders" ? (
+        <section className="space-y-4 rounded-lg border bg-neutral-50/60 p-5">
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900">
+              Customer Orders &amp; Fulfillment
+            </h2>
+            <p className="text-xs text-neutral-500">
+              Checkout sessions, webhook fulfillment status, and download grants
+            </p>
+          </div>
+          {orders.length === 0 ? (
+            <p className="text-sm text-neutral-500">No orders recorded yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {orders.map((order) => {
+                const matchedProduct = products.find(
+                  (p) => p.id === order.product_id,
+                );
+                return (
+                  <div
+                    key={order.id}
+                    className="flex flex-col justify-between gap-2 rounded border bg-white p-3 text-xs sm:flex-row sm:items-center"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-neutral-900">
+                          {matchedProduct?.title ?? order.product_id}
+                        </span>
+                        <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[11px] uppercase text-neutral-700">
+                          {order.provider}
+                        </span>
+                        <span
+                          className={`rounded px-2 py-0.5 font-medium uppercase ${
+                            order.status === "fulfilled"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : order.status === "refunded"
+                                ? "bg-red-100 text-red-800"
+                                : order.status === "needs_review"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-neutral-100 text-neutral-700"
+                          }`}
+                        >
+                          {order.status}
+                        </span>
+                      </div>
+                      <div className="text-neutral-500">
+                        Session:{" "}
+                        <code className="font-mono">
+                          {order.provider_session_id}
+                        </code>
+                        {order.email ? ` • Buyer: ${order.email}` : ""}
+                      </div>
+                    </div>
+                    <div className="text-right font-mono font-semibold text-neutral-900">
+                      {formatPrice(order.amount_cents, order.currency)}
                     </div>
                   </div>
                 );
