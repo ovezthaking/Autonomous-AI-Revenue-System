@@ -32,8 +32,11 @@ from revenue_swarm.models import (  # noqa: E402
     AffiliateProgram,
     AgentTask,
     ContentItem,
+    DownloadGrant,
     EbookChapter,
     HitlDecision,
+    Order,
+    PaymentEvent,
     Product,
 )
 from revenue_swarm.models.publication import Publication
@@ -165,6 +168,9 @@ def real_session(db_engine: Engine) -> Generator[Session]:
         yield session
     finally:
         session.rollback()
+        session.query(DownloadGrant).delete()
+        session.query(Order).delete()
+        session.query(PaymentEvent).delete()
         session.query(EbookChapter).delete()
         session.query(Product).delete()
         session.query(
