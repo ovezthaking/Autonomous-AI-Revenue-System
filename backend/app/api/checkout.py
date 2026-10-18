@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 import redis as redis_lib
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -22,7 +22,7 @@ def _too_fast(key: str, limit: int = 10) -> bool:
         client = redis_lib.from_url(
             config.REDIS_URL, socket_connect_timeout=1, socket_timeout=1
         )
-        count = int(client.incr(key))
+        count = cast(int, client.incr(key))
         if count == 1:
             client.expire(key, 60)
         return count > limit
