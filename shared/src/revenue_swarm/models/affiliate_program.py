@@ -47,9 +47,7 @@ class AffiliateProgram(Base):
         UUID(as_uuid=True), ForeignKey("agent_tasks.id"), nullable=True
     )
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    network_program_id: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    network_program_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     application_status: Mapped[str] = mapped_column(
         Text,
         nullable=False,
