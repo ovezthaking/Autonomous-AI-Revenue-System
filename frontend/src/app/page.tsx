@@ -1208,13 +1208,13 @@ export default function DashboardPage() {
         </section>
       ) : null}
 
-      {/* APPLICATIONS PIPELINE (Do zaaplikowania) */}
+      {/* APPLICATIONS PIPELINE */}
       {activeTab === "all" || activeTab === "programs" ? (
         <section>
-          <h2 className="mb-3 text-lg font-medium">Do zaaplikowania</h2>
+          <h2 className="mb-3 text-lg font-medium">To Apply</h2>
           {applications.length === 0 ? (
             <p className="text-sm text-neutral-500">
-              Brak programów czekających na aplikację lub akceptację.
+              No programs waiting for approve.
             </p>
           ) : null}
           <ul className="space-y-4">
@@ -1249,7 +1249,7 @@ export default function DashboardPage() {
                   <p className="text-sm text-neutral-700">{item.rationale}</p>
                 ) : null}
                 {item.extras?.facts ? (
-                  <p className="text-xs font-mono text-neutral-500">
+                  <p className="text-xs font-mono text-neutral-500 break-all">
                     {JSON.stringify(item.extras.facts)}
                   </p>
                 ) : null}
@@ -1302,7 +1302,7 @@ export default function DashboardPage() {
                     disabled={busyId === item.id}
                     onClick={() => onMarkActive(item)}
                   >
-                    Aktywuj
+                    Approve
                   </Button>
                   <Button
                     size="sm"
@@ -1310,7 +1310,7 @@ export default function DashboardPage() {
                     disabled={busyId === item.id}
                     onClick={() => onMarkDeclined(item.id)}
                   >
-                    Odrzucono
+                    Reject
                   </Button>
                 </div>
               </li>
@@ -1319,12 +1319,12 @@ export default function DashboardPage() {
         </section>
       ) : null}
 
-      {/* BROKEN LINKS (Zepsute linki) */}
+      {/* BROKEN LINKS */}
       {activeTab === "all" || activeTab === "programs" ? (
         <section>
-          <h2 className="mb-3 text-lg font-medium">Zepsute linki</h2>
+          <h2 className="mb-3 text-lg font-medium">Broken links</h2>
           {brokenLinks.length === 0 ? (
-            <p className="text-sm text-neutral-500">Brak zepsutych linków.</p>
+            <p className="text-sm text-neutral-500">No broken links.</p>
           ) : null}
           <ul className="space-y-3">
             {brokenLinks.map((link) => (
