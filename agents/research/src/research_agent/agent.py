@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
-from revenue_swarm.enums import ProgramStatus
+from revenue_swarm.enums import ApplicationStatus, ProgramStatus
 from revenue_swarm.llm import generate_rationale
 from revenue_swarm.models.affiliate_program import AffiliateProgram
 from sqlalchemy import select
@@ -133,14 +133,37 @@ def discover_programs_v2(
     }
 
 
+def _still_blocked(extras: dict | None, now: datetime) -> bool:
+    until = (extras or {}).get("declined_until")
+    if not isinstance(until, str):
+        return False
+    return until > now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _drop_known(
     db: Session, candidates: list[WebCandidate]
 ) -> list[WebCandidate]:
+    now = datetime.now(UTC)
     rows = db.execute(
-        select(AffiliateProgram.name, AffiliateProgram.url)
+        select(
+            AffiliateProgram.name,
+            AffiliateProgram.url,
+            AffiliateProgram.application_status,
+            AffiliateProgram.extras,
+        )
     ).all()
-    known_names = {_normalize(name) for name, _url in rows}
-    known_hosts = {_host(url) for _name, url in rows if url}
+    active_rows: list[tuple[str, str | None]] = []
+    for row in rows:
+        if len(row) == 2:
+            name, url = row
+            active_rows.append((name, url))
+        else:
+            name, url, app_status, extras = row
+            not_declined = app_status != ApplicationStatus.DECLINED.value
+            if not_declined or _still_blocked(extras, now):
+                active_rows.append((name, url))
+    known_names = {_normalize(name) for name, _url in active_rows}
+    known_hosts = {_host(url) for _name, url in active_rows if url}
     seen_names: set[str] = set()
     seen_hosts: set[str] = set()
     fresh: list[WebCandidate] = []
