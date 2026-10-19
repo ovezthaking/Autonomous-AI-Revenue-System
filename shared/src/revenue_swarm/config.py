@@ -58,3 +58,26 @@ SUCCESS_URL = getenv("SUCCESS_URL", "http://localhost:3000/p/success")
 CANCEL_URL = getenv("CANCEL_URL", "http://localhost:3000/p/cancel")
 DOWNLOAD_TOKEN_TTL_DAYS = int(getenv("DOWNLOAD_TOKEN_TTL_DAYS", "30"))
 DOWNLOAD_MAX_PER_GRANT = int(getenv("DOWNLOAD_MAX_PER_GRANT", "5"))
+
+# Affiliate operations
+AFFILIATE_LINKS_ENABLED = getenv("AFFILIATE_LINKS_ENABLED", "0") == "1"
+AFFILIATE_NETWORKS = getenv("AFFILIATE_NETWORKS", "manual")
+LINK_REDIRECT_ENABLED = getenv("LINK_REDIRECT_ENABLED", "1") == "1"
+LINK_CHECK_ENABLED = getenv("LINK_CHECK_ENABLED", "1") == "1"
+LINK_CHECK_BATCH = int(getenv("LINK_CHECK_BATCH", "50"))
+NETWORK_RATE_LIMIT = int(getenv("NETWORK_RATE_LIMIT", "30"))
+
+# Public base for /go/{slug}; Next.js rewrites /go/* to the backend.
+SITE_URL = getenv("SITE_URL", PUBLIC_BASE_URL).rstrip("/")
+LINK_FALLBACK_URL = getenv("LINK_FALLBACK_URL", SITE_URL)
+
+AWIN_PUBLISHER_ID = os.getenv("AWIN_PUBLISHER_ID", "") or ""
+AWIN_API_TOKEN = os.getenv("AWIN_API_TOKEN", "") or ""
+IMPACT_ACCOUNT_SID = os.getenv("IMPACT_ACCOUNT_SID", "") or ""
+IMPACT_AUTH_TOKEN = os.getenv("IMPACT_AUTH_TOKEN", "") or ""
+CJ_API_KEY = os.getenv("CJ_API_KEY", "") or ""
+AMAZON_PARTNER_TAG = os.getenv("AMAZON_PARTNER_TAG", "") or ""
+
+NETWORK_SECRETS = tuple(
+    s for s in (AWIN_API_TOKEN, IMPACT_AUTH_TOKEN, CJ_API_KEY) if s
+)
