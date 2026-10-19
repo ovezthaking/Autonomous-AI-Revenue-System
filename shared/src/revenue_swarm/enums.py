@@ -7,6 +7,19 @@ class ProgramStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class ApplicationStatus(StrEnum):
+    NOT_APPLIED = "not_applied"
+    PENDING = "pending"
+    ACTIVE = "active"
+    DECLINED = "declined"
+
+
+class LinkStatus(StrEnum):
+    ACTIVE = "active"
+    BROKEN = "broken"
+    RETIRED = "retired"
+
+
 class ContentStatus(StrEnum):
     DRAFT = "draft"
     APPROVED = "approved"
