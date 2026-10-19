@@ -183,9 +183,7 @@ def test_amount_mismatch_flags_needs_review_and_does_not_fulfill(
     assert sent == []
 
 
-def test_net_subtotal_with_vat_fulfills_cleanly(
-    db_session, monkeypatch
-):
+def test_net_subtotal_with_vat_fulfills_cleanly(db_session, monkeypatch):
     """Stripe Tax / MoR adds VAT to amount_total (e.g. 2337 cents),
     while amount_subtotal is 1900 cents. Must match against net subtotal."""
     sent: list[str] = []
