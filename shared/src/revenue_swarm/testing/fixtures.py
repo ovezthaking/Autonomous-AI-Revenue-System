@@ -29,12 +29,14 @@ from sqlalchemy.orm import Session  # noqa: E402
 from revenue_swarm.config import DATABASE_URL  # noqa: E402
 from revenue_swarm.db import Base, SessionLocal, engine  # noqa: E402
 from revenue_swarm.models import (  # noqa: E402
+    AffiliateLink,
     AffiliateProgram,
     AgentTask,
     ContentItem,
     DownloadGrant,
     EbookChapter,
     HitlDecision,
+    LinkClick,
     Order,
     PaymentEvent,
     Product,
@@ -68,6 +70,7 @@ def _ensure_database_exists(database_url: str) -> None:
 def db_engine() -> Generator[Engine]:
     """Engine connected to the test database, with the schema created."""
     _ensure_database_exists(DATABASE_URL)
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield engine
 
@@ -176,6 +179,8 @@ def real_session(db_engine: Engine) -> Generator[Session]:
         session.query(
             Publication
         ).delete()  # <-- nowa linia, MUSI być przed ContentItem
+        session.query(LinkClick).delete()
+        session.query(AffiliateLink).delete()
         session.query(ContentItem).delete()
         session.query(HitlDecision).delete()
         session.query(AffiliateProgram).delete()

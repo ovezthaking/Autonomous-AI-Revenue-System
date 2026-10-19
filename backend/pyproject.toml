@@ -15,7 +15,7 @@ revenue-swarm-shared = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "../agents/sales/src"]
 asyncio_mode = "auto"
 markers = [
     "integration: requires a live Postgres instance (see tests/conftest.py)",
