@@ -7,6 +7,8 @@ import {
   decide,
   decideContent,
   decideProduct,
+  fetchApplications,
+  fetchBrokenLinks,
   fetchContent,
   fetchNeedsReview,
   fetchOrders,
@@ -15,16 +17,21 @@ import {
   fetchProducts,
   fetchRecentTasks,
   fetchRecommendations,
+  markApplicationActive,
+  markApplicationApplied,
+  markApplicationDeclined,
   proposeProducts,
   Publication,
   publishDue,
   recordProductReview,
+  repairAffiliateLink,
   resolvePublication,
   retryProductChapters,
   runContent,
   runResearch,
   scheduleContent,
   setAffiliateLink,
+  type AffiliateLink,
   type AgentTask,
   type Chapter,
   type ContentItem,
@@ -101,6 +108,8 @@ function chapterStatusBadge(status: string) {
 export default function DashboardPage() {
   const [proposed, setProposed] = useState<Recommendation[]>([]);
   const [approved, setApproved] = useState<Recommendation[]>([]);
+  const [applications, setApplications] = useState<Recommendation[]>([]);
+  const [brokenLinks, setBrokenLinks] = useState<AffiliateLink[]>([]);
   const [content, setContent] = useState<ContentItem[]>([]);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -111,6 +120,13 @@ export default function DashboardPage() {
   const [runningContent, setRunningContent] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [linkDrafts, setLinkDrafts] = useState<Record<string, string>>({});
+  const [networkDrafts, setNetworkDrafts] = useState<Record<string, string>>(
+    {},
+  );
+  const [programIdDrafts, setProgramIdDrafts] = useState<
+    Record<string, string>
+  >({});
+  const [repairDrafts, setRepairDrafts] = useState<Record<string, string>>({});
   const [needsReview, setNeedsReview] = useState<Publication[]>([]);
 
   // Products state
@@ -134,6 +150,8 @@ export default function DashboardPage() {
     const [
       proposedRows,
       approvedRows,
+      applicationRows,
+      brokenRows,
       contentRows,
       taskRows,
       reviewRows,
@@ -142,6 +160,8 @@ export default function DashboardPage() {
     ] = await Promise.all([
       fetchRecommendations("proposed"),
       fetchRecommendations("approved"),
+      fetchApplications(),
+      fetchBrokenLinks(),
       fetchContent(),
       fetchRecentTasks(),
       fetchNeedsReview(),
@@ -150,6 +170,8 @@ export default function DashboardPage() {
     ]);
     setProposed(proposedRows);
     setApproved(approvedRows);
+    setApplications(applicationRows);
+    setBrokenLinks(brokenRows);
     setContent(contentRows);
     setTasks(taskRows);
     setNeedsReview(reviewRows);
@@ -202,6 +224,66 @@ export default function DashboardPage() {
       await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "save link failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onMarkApplied = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await markApplicationApplied(id);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "mark applied failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onMarkActive = async (item: Recommendation) => {
+    setBusyId(item.id);
+    setError(null);
+    try {
+      const network = (
+        networkDrafts[item.id] ??
+        item.network ??
+        "manual"
+      ).toLowerCase();
+      const progId =
+        programIdDrafts[item.id] ?? item.network_program_id ?? undefined;
+      await markApplicationActive(item.id, network, progId);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "activate failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onMarkDeclined = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await markApplicationDeclined(id);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "mark declined failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onRepairLink = async (link: AffiliateLink) => {
+    setBusyId(link.id);
+    setError(null);
+    try {
+      const dest = repairDrafts[link.id] ?? link.destination_url;
+      await repairAffiliateLink(link.id, dest);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "repair link failed");
     } finally {
       setBusyId(null);
     }
@@ -1085,7 +1167,14 @@ export default function DashboardPage() {
           <ul className="space-y-4">
             {approved.map((item) => (
               <li key={item.id} className="rounded border bg-white p-4">
-                <div className="font-medium">{item.name}</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">{item.name}</div>
+                  {item.application_status ? (
+                    <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-mono">
+                      {item.application_status}
+                    </span>
+                  ) : null}
+                </div>
                 {item.rationale ? (
                   <p className="text-sm text-neutral-600 mt-1">
                     {item.rationale}
@@ -1101,7 +1190,7 @@ export default function DashboardPage() {
                         [item.id]: event.target.value,
                       }))
                     }
-                    placeholder="Affiliate link"
+                    placeholder="Affiliate link (manual / fallback)"
                     className="min-w-0 flex-1 rounded border px-2.5 py-1 text-sm"
                   />
                   <Button
@@ -1111,6 +1200,173 @@ export default function DashboardPage() {
                     onClick={() => onSaveLink(item)}
                   >
                     Save link
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* APPLICATIONS PIPELINE (Do zaaplikowania) */}
+      {activeTab === "all" || activeTab === "programs" ? (
+        <section>
+          <h2 className="mb-3 text-lg font-medium">Do zaaplikowania</h2>
+          {applications.length === 0 ? (
+            <p className="text-sm text-neutral-500">
+              Brak programów czekających na aplikację lub akceptację.
+            </p>
+          ) : null}
+          <ul className="space-y-4">
+            {applications.map((item) => (
+              <li
+                key={item.id}
+                className="rounded border bg-white p-4 space-y-2"
+              >
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium">{item.name}</h3>
+                  <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-mono">
+                    {item.application_status ?? "not_applied"}
+                  </span>
+                  {item.extras?.needs_reminder ? (
+                    <span className="rounded bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-semibold">
+                      Przypomnienie (&gt;14 dni)
+                    </span>
+                  ) : null}
+                </div>
+                {item.url ? (
+                  <p className="text-xs text-blue-600 underline break-all">
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {item.url}
+                    </a>
+                  </p>
+                ) : null}
+                {item.rationale ? (
+                  <p className="text-sm text-neutral-700">{item.rationale}</p>
+                ) : null}
+                {item.extras?.facts ? (
+                  <p className="text-xs font-mono text-neutral-500">
+                    {JSON.stringify(item.extras.facts)}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  {item.application_status === "not_applied" ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busyId === item.id}
+                      onClick={() => onMarkApplied(item.id)}
+                    >
+                      Zaaplikowano
+                    </Button>
+                  ) : null}
+                  <select
+                    value={
+                      networkDrafts[item.id] ??
+                      (item.network ? item.network.toLowerCase() : "manual")
+                    }
+                    onChange={(e) =>
+                      setNetworkDrafts((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.value,
+                      }))
+                    }
+                    className="rounded border px-2 py-1 text-xs"
+                  >
+                    <option value="manual">manual</option>
+                    <option value="awin">awin</option>
+                    <option value="impact">impact</option>
+                    <option value="cj">cj</option>
+                    <option value="amazon">amazon</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={
+                      programIdDrafts[item.id] ?? item.network_program_id ?? ""
+                    }
+                    onChange={(e) =>
+                      setProgramIdDrafts((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.value,
+                      }))
+                    }
+                    placeholder="network_program_id"
+                    className="rounded border px-2 py-1 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={busyId === item.id}
+                    onClick={() => onMarkActive(item)}
+                  >
+                    Aktywuj
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={busyId === item.id}
+                    onClick={() => onMarkDeclined(item.id)}
+                  >
+                    Odrzucono
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* BROKEN LINKS (Zepsute linki) */}
+      {activeTab === "all" || activeTab === "programs" ? (
+        <section>
+          <h2 className="mb-3 text-lg font-medium">Zepsute linki</h2>
+          {brokenLinks.length === 0 ? (
+            <p className="text-sm text-neutral-500">Brak zepsutych linków.</p>
+          ) : null}
+          <ul className="space-y-3">
+            {brokenLinks.map((link) => (
+              <li
+                key={link.id}
+                className="rounded border bg-white p-4 space-y-2"
+              >
+                <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600">
+                  <span className="font-mono font-semibold">/go/{link.slug}</span>
+                  <span>&bull;</span>
+                  <span>{link.network}</span>
+                  {link.program_name ? (
+                    <>
+                      <span>&bull;</span>
+                      <span>{link.program_name}</span>
+                    </>
+                  ) : null}
+                  {link.content_title ? (
+                    <>
+                      <span>&bull;</span>
+                      <span>{link.content_title}</span>
+                    </>
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={repairDrafts[link.id] ?? link.destination_url}
+                    onChange={(e) =>
+                      setRepairDrafts((prev) => ({
+                        ...prev,
+                        [link.id]: e.target.value,
+                      }))
+                    }
+                    className="min-w-0 flex-1 rounded border px-2.5 py-1 text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={busyId === link.id}
+                    onClick={() => onRepairLink(link)}
+                  >
+                    Napraw link
                   </Button>
                 </div>
               </li>
