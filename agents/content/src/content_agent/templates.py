@@ -21,10 +21,16 @@ STUB_SOCIAL = "Stub social post (LLM_STUB=1). Short, plain, no hashtags."
 
 BLOG_BODY = "{body}\n\n---\n\nAffiliate link: {name} - {link}"
 SOCIAL_BODY = "{body}\n\n{link}"
+AMAZON_DISCLOSURE = "As an Amazon Associate I earn from qualifying purchases."
 
 
-def render_blog(body: str, name: str, link: str) -> str:
-    return BLOG_BODY.format(body=body.strip(), name=name, link=link)
+def render_blog(
+    body: str, name: str, link: str, network: str | None = None
+) -> str:
+    rendered = BLOG_BODY.format(body=body.strip(), name=name, link=link)
+    if network == "amazon":
+        rendered = f"{rendered}\n\n{AMAZON_DISCLOSURE}"
+    return rendered
 
 
 def render_social(body: str, link: str) -> str:

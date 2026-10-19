@@ -21,7 +21,8 @@ class WordPressTarget:
     def publish(self, item: ContentItem) -> PublishResult:
         slug = f"rs-{item.id.hex[:12]}"
         program = item.program
-        link = program.affiliate_link if program is not None else ""
+        fallback = program.affiliate_link if program is not None else ""
+        link = (item.extras or {}).get("affiliate_url") or fallback
         name = program.name if program is not None else ""
         payload = {
             "title": item.title,
