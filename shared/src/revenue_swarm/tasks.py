@@ -22,6 +22,9 @@ class TaskName(StrEnum):
     EBOOK_ASSEMBLE = "ebook.assemble"
     SALES_FULFILL = "sales.fulfill"
     SALES_REFUND = "sales.refund"
+    AFFILIATE_SYNC = "affiliate.sync_performance"
+    AFFILIATE_CHECK_LINKS = "affiliate.check_links"
+    AFFILIATE_CHECK_PENDING = "affiliate.check_pending"
 
 
 class Queue(StrEnum):
