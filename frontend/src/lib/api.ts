@@ -5,6 +5,9 @@ export type ScoreBreakdown = Record<string, number>;
 export type RecommendationExtras = {
   evidence_url?: string | null;
   score_breakdown?: ScoreBreakdown | null;
+  facts?: Record<string, unknown> | null;
+  needs_reminder?: boolean;
+  declined_until?: string | null;
 };
 
 export type ResearchError = {
@@ -18,6 +21,11 @@ export type Recommendation = {
   url: string | null;
   affiliate_link: string | null;
   network: string | null;
+  network_program_id?: string | null;
+  application_status?: string;
+  applied_at?: string | null;
+  activated_at?: string | null;
+  allow_redirect?: boolean;
   category: string | null;
   rationale: string | null;
   extras: RecommendationExtras | null;
@@ -26,6 +34,22 @@ export type Recommendation = {
   source_task_id?: string | null;
   created_at: string;
   updated_at?: string | null;
+};
+
+export type AffiliateLink = {
+  id: string;
+  program_id: string;
+  program_name: string | null;
+  content_item_id: string | null;
+  content_title: string | null;
+  destination_url: string;
+  tracking_url: string;
+  slug: string;
+  subid: string;
+  network: string;
+  status: string;
+  last_checked_at: string | null;
+  created_at: string;
 };
 
 export type ContentItem = {
@@ -414,3 +438,60 @@ export const consumeDownloadToken = async (
     remaining_downloads: number;
   }>(res);
 };
+
+export const fetchApplications = async (): Promise<Array<Recommendation>> => {
+  const res = await fetch(`${API}/applications`, { cache: "no-store" });
+  return parse<Array<Recommendation>>(res);
+};
+
+export const markApplicationApplied = async (
+  id: string,
+): Promise<Recommendation> => {
+  const res = await fetch(`${API}/applications/${id}/applied`, {
+    method: "POST",
+  });
+  return parse<Recommendation>(res);
+};
+
+export const markApplicationActive = async (
+  id: string,
+  network: string,
+  networkProgramId?: string,
+): Promise<Recommendation> => {
+  const res = await fetch(`${API}/applications/${id}/active`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      network,
+      network_program_id: networkProgramId || null,
+    }),
+  });
+  return parse<Recommendation>(res);
+};
+
+export const markApplicationDeclined = async (
+  id: string,
+): Promise<Recommendation> => {
+  const res = await fetch(`${API}/applications/${id}/declined`, {
+    method: "POST",
+  });
+  return parse<Recommendation>(res);
+};
+
+export const fetchBrokenLinks = async (): Promise<Array<AffiliateLink>> => {
+  const res = await fetch(`${API}/links?status=broken`, { cache: "no-store" });
+  return parse<Array<AffiliateLink>>(res);
+};
+
+export const repairAffiliateLink = async (
+  id: string,
+  destinationUrl: string,
+): Promise<AffiliateLink> => {
+  const res = await fetch(`${API}/links/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destination_url: destinationUrl }),
+  });
+  return parse<AffiliateLink>(res);
+};
+
