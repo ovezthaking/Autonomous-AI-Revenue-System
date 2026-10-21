@@ -1,4 +1,5 @@
 from revenue_swarm.models.affiliate_link import AffiliateLink
+from revenue_swarm.models.affiliate_metric import AffiliateMetric
 from revenue_swarm.models.affiliate_program import AffiliateProgram
 from revenue_swarm.models.content_item import ContentItem
 from revenue_swarm.models.download_grant import DownloadGrant
@@ -13,6 +14,7 @@ from revenue_swarm.models.task import AgentTask
 
 __all__ = [
     "AffiliateLink",
+    "AffiliateMetric",
     "AffiliateProgram",
     "AgentTask",
     "ContentItem",
