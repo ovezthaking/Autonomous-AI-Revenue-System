@@ -30,6 +30,7 @@ from revenue_swarm.config import DATABASE_URL  # noqa: E402
 from revenue_swarm.db import Base, SessionLocal, engine  # noqa: E402
 from revenue_swarm.models import (  # noqa: E402
     AffiliateLink,
+    AffiliateMetric,
     AffiliateProgram,
     AgentTask,
     ContentItem,
@@ -181,6 +182,7 @@ def real_session(db_engine: Engine) -> Generator[Session]:
         ).delete()  # <-- nowa linia, MUSI być przed ContentItem
         session.query(LinkClick).delete()
         session.query(AffiliateLink).delete()
+        session.query(AffiliateMetric).delete()
         session.query(ContentItem).delete()
         session.query(HitlDecision).delete()
         session.query(AffiliateProgram).delete()
