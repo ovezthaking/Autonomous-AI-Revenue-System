@@ -67,6 +67,12 @@ LINK_CHECK_ENABLED = getenv("LINK_CHECK_ENABLED", "1") == "1"
 LINK_CHECK_BATCH = int(getenv("LINK_CHECK_BATCH", "50"))
 NETWORK_RATE_LIMIT = int(getenv("NETWORK_RATE_LIMIT", "30"))
 
+MIN_CLICKS_FOR_EPC = int(getenv("MIN_CLICKS_FOR_EPC", "100"))
+EPC_WINDOW_DAYS = int(getenv("EPC_WINDOW_DAYS", "90"))
+EPC_PRIOR_WEIGHT = int(getenv("EPC_PRIOR_WEIGHT", "100"))
+SYNC_DAYS_BACK = int(getenv("SYNC_DAYS_BACK", "7"))
+TOKEN_CENTS = int(getenv("TOKEN_CENTS", "0"))
+
 # Public base for /go/{slug}; Next.js rewrites /go/* to the backend.
 SITE_URL = getenv("SITE_URL", PUBLIC_BASE_URL).rstrip("/")
 LINK_FALLBACK_URL = getenv("LINK_FALLBACK_URL", SITE_URL)
