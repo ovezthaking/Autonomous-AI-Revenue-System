@@ -2,6 +2,7 @@
 
 import hashlib
 import secrets
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,6 +22,13 @@ def subid_for(item: ContentItem) -> str:
 
 def sha256_hex(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _with_utm(url: str, subid: str) -> str:
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query))
+    query["utm_content"] = subid
+    return urlunsplit(parts._replace(query=urlencode(query)))
 
 
 def tracking_enabled(program: AffiliateProgram) -> bool:
@@ -54,7 +62,12 @@ def ensure_link(
     if existing is not None:
         return existing
     network = network_for(program.network)
-    tracking = network.create_link(program, destination, subid)
+    target = (
+        _with_utm(destination, subid)
+        if config.SITE_URL and destination.startswith(config.SITE_URL)
+        else destination
+    )
+    tracking = network.create_link(program, target, subid)
     row = AffiliateLink(
         program_id=program.id,
         content_item_id=item.id,
