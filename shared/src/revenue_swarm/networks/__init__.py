@@ -1,6 +1,8 @@
+from revenue_swarm import config
 from revenue_swarm.networks.awin import AwinNetwork
 from revenue_swarm.networks.base import (
     AffiliateNetwork,
+    PerformanceRow,
     PermanentNetworkError,
     TrackingLink,
 )
@@ -24,6 +26,15 @@ def network_for(name: str | None) -> AffiliateNetwork:
     return ManualNetwork()
 
 
+def active_networks() -> list[AffiliateNetwork]:
+    names = [
+        item.strip().lower()
+        for item in config.AFFILIATE_NETWORKS.split(",")
+        if item.strip()
+    ]
+    return [network_for(name) for name in names]
+
+
 __all__ = [
     "KNOWN_NETWORKS",
     "AffiliateNetwork",
@@ -32,7 +43,9 @@ __all__ = [
     "CjNetwork",
     "ImpactNetwork",
     "ManualNetwork",
+    "PerformanceRow",
     "PermanentNetworkError",
     "TrackingLink",
+    "active_networks",
     "network_for",
 ]
