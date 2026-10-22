@@ -1,12 +1,16 @@
+from datetime import date
+
 import httpx
 
 from revenue_swarm import config
 from revenue_swarm.models.affiliate_program import AffiliateProgram
 from revenue_swarm.networks.base import (
+    PerformanceRow,
     PermanentNetworkError,
     TrackingLink,
     make_client,
     require,
+    to_cents,
 )
 from revenue_swarm.networks.pacing import pace
 
@@ -44,3 +48,46 @@ class CjNetwork:
             network_link_id=data.get("linkId"),
             raw=data,
         )
+
+    def fetch_performance(
+        self, since: date, until: date
+    ) -> list[PerformanceRow]:
+        key = require(config.CJ_API_KEY, "CJ_API_KEY")
+        pace(self.name)
+        with make_client(self._transport, timeout=30) as client:
+            response = client.get(
+                "https://commissions.api.cj.com/query",
+                headers={"Authorization": f"Bearer {key}"},
+                params={
+                    "startDate": since.isoformat(),
+                    "endDate": until.isoformat(),
+                },
+            )
+        if response.status_code in (400, 401, 403, 404):
+            raise PermanentNetworkError(f"cj {response.status_code}")
+        response.raise_for_status()
+        payload = response.json()
+        items = (
+            payload.get("records", [])
+            if isinstance(payload, dict)
+            else payload
+        )
+        rows: list[PerformanceRow] = []
+        for item in items:
+            raw_date = str(item.get("date") or since.isoformat())[:10]
+            prog_id = item.get("advertiserId") or item.get("programId")
+            rows.append(
+                PerformanceRow(
+                    day=date.fromisoformat(raw_date),
+                    program_id=str(prog_id) if prog_id else None,
+                    subid=item.get("sid") or item.get("subid"),
+                    clicks=int(item.get("clicks") or 0),
+                    conversions_pending=int(item.get("pendingNo") or 0),
+                    conversions_approved=int(item.get("approvedNo") or 0),
+                    conversions_declined=int(item.get("declinedNo") or 0),
+                    revenue_pending_cents=to_cents(item.get("pendingValue")),
+                    revenue_approved_cents=to_cents(item.get("approvedValue")),
+                    currency=str(item.get("currency") or "USD"),
+                )
+            )
+        return rows
