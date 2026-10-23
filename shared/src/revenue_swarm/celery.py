@@ -27,6 +27,11 @@ celery_app.conf.beat_schedule = {
         "task": TaskName.CONTENT_PUBLISH_DUE.value,
         "schedule": 900.0,
     },
+    "affiliate-sync-daily": {
+        "task": TaskName.AFFILIATE_SYNC.value,
+        "schedule": crontab(hour=4, minute=10),
+        "args": (7,),
+    },
     "affiliate-check-links": {
         "task": TaskName.AFFILIATE_CHECK_LINKS.value,
         "schedule": crontab(hour=3, minute=15),
