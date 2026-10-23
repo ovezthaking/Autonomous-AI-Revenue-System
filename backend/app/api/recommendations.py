@@ -117,6 +117,7 @@ def update_program_metrics(
     row.extras = {
         **(row.extras or {}),
         "epc": body.epc,
+        "epc_operator": body.epc,
         "epc_source": body.epc_source,
     }
     db.commit()
