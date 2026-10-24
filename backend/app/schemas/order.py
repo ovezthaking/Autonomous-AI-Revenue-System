@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class CheckoutRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=200)
     consent_immediate_delivery: bool = True
+    source: str | None = Field(default=None, max_length=64)
 
     model_config = {"extra": "ignore"}
 
@@ -24,6 +25,7 @@ class OrderRead(BaseModel):
     status: str
     consent_immediate_delivery: bool
     fulfilled_at: datetime | None
+    source: str | None = None
     extras: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
