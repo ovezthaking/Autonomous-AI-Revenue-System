@@ -16,12 +16,20 @@ os.environ["SEARCH_STUB"] = "1"
 os.environ.setdefault("HITL_ACTOR", "test-operator")
 os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434-test-unused"
 os.environ["OLLAMA_MODEL"] = "test-model-unused"
+os.environ["WEBHOOK_URL"] = ""
+os.environ["DISCORD_BOT_TOKEN"] = ""
+os.environ["DISCORD_PUBLIC_KEY"] = ""
+os.environ["DISCORD_APPLICATION_ID"] = ""
+os.environ["DISCORD_GUILD_ID"] = ""
+os.environ["DISCORD_CHANNEL_ID"] = ""
+os.environ["DISCORD_ALLOWED_USER_IDS"] = ""
 
 import uuid  # noqa: E402
 from collections.abc import Generator  # noqa: E402
 
 import psycopg  # noqa: E402
 import pytest  # noqa: E402
+from psycopg import sql  # noqa: E402
 from sqlalchemy import event  # noqa: E402
 from sqlalchemy.engine import Engine  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
@@ -37,12 +45,13 @@ from revenue_swarm.models import (  # noqa: E402
     DownloadGrant,
     EbookChapter,
     HitlDecision,
+    HitlDiscordMessage,
     LinkClick,
     Order,
     PaymentEvent,
     Product,
 )
-from revenue_swarm.models.publication import Publication
+from revenue_swarm.models.publication import Publication  # noqa: E402
 
 
 def _ensure_database_exists(database_url: str) -> None:
@@ -62,7 +71,11 @@ def _ensure_database_exists(database_url: str) -> None:
         ).fetchone()
         if not exists:
             try:
-                conn.execute(f'CREATE DATABASE "{dbname}"')
+                conn.execute(
+                    sql.SQL('CREATE DATABASE "{}"').format(
+                        sql.Identifier(dbname)
+                    )
+                )
             except psycopg.errors.DuplicateDatabase:
                 pass
 
@@ -103,7 +116,7 @@ def make_program(db_session: Session):
     """Factory for quickly creating AffiliateProgram in tests."""
 
     def _make(**overrides: object) -> AffiliateProgram:
-        defaults = {
+        defaults: dict[str, object] = {
             "name": f"Test Program {uuid.uuid4().hex[:8]}",
             "url": "https://example.com/aff",
             "network": "TestNetwork",
@@ -126,7 +139,7 @@ def make_content_item(db_session: Session):
     """Factory for quickly creating ContentItem in tests."""
 
     def _make(**overrides: object) -> ContentItem:
-        defaults = {
+        defaults: dict[str, object] = {
             "title": f"Test Content {uuid.uuid4().hex[:8]}",
             "body": "Test content.",
             "channel": "blog",
@@ -185,6 +198,7 @@ def real_session(db_engine: Engine) -> Generator[Session]:
         session.query(AffiliateMetric).delete()
         session.query(ContentItem).delete()
         session.query(HitlDecision).delete()
+        session.query(HitlDiscordMessage).delete()
         session.query(AffiliateProgram).delete()
         session.query(AgentTask).delete()
         session.commit()
