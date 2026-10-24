@@ -10,6 +10,7 @@ import {
   fetchApplications,
   fetchBrokenLinks,
   fetchContent,
+  fetchMetricsByContent,
   fetchNeedsReview,
   fetchOrders,
   fetchProductAssetUrl,
@@ -35,6 +36,7 @@ import {
   type AgentTask,
   type Chapter,
   type ContentItem,
+  type ContentMetricRow,
   type Order,
   type Product,
   type Recommendation,
@@ -110,6 +112,7 @@ export default function DashboardPage() {
   const [approved, setApproved] = useState<Recommendation[]>([]);
   const [applications, setApplications] = useState<Recommendation[]>([]);
   const [brokenLinks, setBrokenLinks] = useState<AffiliateLink[]>([]);
+  const [contentMetrics, setContentMetrics] = useState<ContentMetricRow[]>([]);
   const [content, setContent] = useState<ContentItem[]>([]);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -152,6 +155,7 @@ export default function DashboardPage() {
       approvedRows,
       applicationRows,
       brokenRows,
+      metricRows,
       contentRows,
       taskRows,
       reviewRows,
@@ -162,6 +166,7 @@ export default function DashboardPage() {
       fetchRecommendations("approved"),
       fetchApplications(),
       fetchBrokenLinks(),
+      fetchMetricsByContent(),
       fetchContent(),
       fetchRecentTasks(),
       fetchNeedsReview(),
@@ -172,6 +177,7 @@ export default function DashboardPage() {
     setApproved(approvedRows);
     setApplications(applicationRows);
     setBrokenLinks(brokenRows);
+    setContentMetrics(metricRows);
     setContent(contentRows);
     setTasks(taskRows);
     setNeedsReview(reviewRows);
@@ -1372,6 +1378,86 @@ export default function DashboardPage() {
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {/* REVENUE BY CONTENT */}
+      {activeTab === "all" ||
+      activeTab === "content" ||
+      activeTab === "programs" ? (
+        <section>
+          <h2 className="mb-3 text-lg font-medium">Revenue by content</h2>
+          {contentMetrics.length === 0 ? (
+            <p className="text-sm text-neutral-500">
+              No content attribution metrics yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded border bg-white">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b bg-neutral-50 text-neutral-600">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Title</th>
+                    <th className="px-3 py-2 font-medium">Publication</th>
+                    <th className="px-3 py-2 text-right font-medium">Clicks</th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      Conversions
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      Affiliate rev.
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      Pending (oczekujące)
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      Own sales
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">Cost</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {contentMetrics.map((row) => (
+                    <tr key={row.id || row.title}>
+                      <td className="px-3 py-2 font-medium text-neutral-900">
+                        {row.title}
+                      </td>
+                      <td className="px-3 py-2 text-neutral-600">
+                        {row.publication ? (
+                          <a
+                            href={row.publication}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline break-all"
+                          >
+                            {row.publication}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono">
+                        {row.clicks}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono">
+                        {row.conversions}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-emerald-700">
+                        {formatPrice(row.affiliate_cents)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-amber-700">
+                        {formatPrice(row.pending_cents)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-indigo-700">
+                        {formatPrice(row.own_cents)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-neutral-500">
+                        {formatPrice(row.cost_cents)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       ) : null}
 

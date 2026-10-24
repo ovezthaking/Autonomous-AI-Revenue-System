@@ -58,7 +58,9 @@ export default function ProductLandingPage({
     setCheckingOut(true);
     setError(null);
     try {
-      const res = await createCheckout(slug, consent);
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get("utm_content");
+      const res = await createCheckout(slug, consent, source);
       window.location.href = res.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Checkout failed");

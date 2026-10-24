@@ -398,6 +398,7 @@ export const fetchProductSample = async (
 export const createCheckout = async (
   slug: string,
   consentImmediateDelivery: boolean = true,
+  source?: string | null,
 ): Promise<{ url: string; session_id: string }> => {
   const res = await fetch(`${API}/checkout`, {
     method: "POST",
@@ -405,6 +406,7 @@ export const createCheckout = async (
     body: JSON.stringify({
       slug,
       consent_immediate_delivery: consentImmediateDelivery,
+      source: source ?? null,
     }),
   });
   return parse<{ url: string; session_id: string }>(res);
@@ -493,5 +495,24 @@ export const repairAffiliateLink = async (
     body: JSON.stringify({ destination_url: destinationUrl }),
   });
   return parse<AffiliateLink>(res);
+};
+
+export type ContentMetricRow = {
+  id: string;
+  title: string;
+  publication: string | null;
+  clicks: number;
+  conversions: number;
+  affiliate_cents: number;
+  own_cents: number;
+  pending_cents: number;
+  cost_cents: number;
+};
+
+export const fetchMetricsByContent = async (): Promise<
+  Array<ContentMetricRow>
+> => {
+  const res = await fetch(`${API}/metrics/by-content`, { cache: "no-store" });
+  return parse<Array<ContentMetricRow>>(res);
 };
 
