@@ -6,6 +6,7 @@ from app.api.checkout import router as checkout_router
 from app.api.content import router as content_router
 from app.api.downloads import router as downloads_router
 from app.api.links import router as links_router
+from app.api.metrics import router as metrics_router
 from app.api.orders import router as orders_router
 from app.api.products import router as products_router
 from app.api.publications import router as publications_router
@@ -28,6 +29,7 @@ app.include_router(downloads_router)
 app.include_router(orders_router)
 app.include_router(affiliate_router)
 app.include_router(links_router)
+app.include_router(metrics_router)
 
 
 origins = [o.strip() for o in CORS_ORIGINS.split(",") if o.strip()]
