@@ -70,6 +70,7 @@ def create_checkout(
             currency=product.currency,
             status=OrderStatus.PENDING.value,
             consent_immediate_delivery=payload.consent_immediate_delivery,
+            source=payload.source,
         )
     )
     db.commit()
