@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.affiliate import router as affiliate_router
 from app.api.checkout import router as checkout_router
 from app.api.content import router as content_router
+from app.api.discord import router as discord_router
 from app.api.downloads import router as downloads_router
 from app.api.links import router as links_router
 from app.api.metrics import router as metrics_router
@@ -30,6 +31,7 @@ app.include_router(orders_router)
 app.include_router(affiliate_router)
 app.include_router(links_router)
 app.include_router(metrics_router)
+app.include_router(discord_router)
 
 
 origins = [o.strip() for o in CORS_ORIGINS.split(",") if o.strip()]
