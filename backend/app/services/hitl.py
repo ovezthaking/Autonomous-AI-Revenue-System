@@ -18,6 +18,8 @@ from revenue_swarm.tasks import TaskName
 from sqlalchemy.orm import Session
 
 from app.core.config import HITL_ACTOR
+from app.services.discord_hitl import edit_decided_card
+from app.services.hitl_subject import subject_from_program
 from app.services.webhook import notify_hitl_decision
 
 NOT_FOUND_DETAIL = "Not found"
@@ -38,13 +40,14 @@ def _record_decision(
     entity_id: uuid.UUID,
     decision: HitlDecisionValue,
     comment: str | None,
+    actor: str | None = None,
 ) -> None:
     db.add(
         HitlDecision(
             entity_type=entity_type.value,
             entity_id=entity_id,
             decision=decision.value,
-            actor=HITL_ACTOR,
+            actor=actor if actor else HITL_ACTOR,
             comment=comment,
         )
     )
@@ -55,7 +58,9 @@ def decide_program(
     program_id: uuid.UUID,
     decision: HitlDecisionValue,
     comment: str | None,
+    actor: str | None = None,
 ) -> AffiliateProgram:
+    chosen_actor = actor if actor else HITL_ACTOR
     row = _get_program(db=db, program_id=program_id)
     if row.status != ProgramStatus.PROPOSED.value:
         raise HTTPException(
@@ -69,12 +74,18 @@ def decide_program(
     )
     row.status = new_status
     _record_decision(
-        db, HitlEntityType.AFFILIATE_PROGRAM, row.id, decision, comment
+        db,
+        HitlEntityType.AFFILIATE_PROGRAM,
+        row.id,
+        decision,
+        comment,
+        actor=chosen_actor,
     )
     db.commit()
     db.refresh(row)
 
     notify_hitl_decision(row.name, row.status)
+    edit_decided_card(db, subject_from_program(row), chosen_actor)
 
     return row
 

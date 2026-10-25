@@ -86,3 +86,25 @@ def test_decide_program_raises_404_when_program_missing():
 
     assert exc_info.value.status_code == 404
     db.commit.assert_not_called()
+
+
+def test_decide_program_records_custom_or_default_actor():
+    from app.core.config import HITL_ACTOR
+
+    db = MagicMock()
+    program1 = _program(ProgramStatus.PROPOSED.value)
+    db.get.return_value = program1
+    decide_program(
+        db,
+        program1.id,
+        HitlDecisionValue.APPROVED,
+        None,
+        actor="discord:123",
+    )
+    assert db.add.call_args[0][0].actor == "discord:123"
+
+    db.reset_mock()
+    program2 = _program(ProgramStatus.PROPOSED.value)
+    db.get.return_value = program2
+    decide_program(db, program2.id, HitlDecisionValue.APPROVED, None)
+    assert db.add.call_args[0][0].actor == HITL_ACTOR
