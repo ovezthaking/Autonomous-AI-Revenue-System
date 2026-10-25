@@ -25,6 +25,7 @@ class TaskName(StrEnum):
     AFFILIATE_SYNC = "affiliate.sync_performance"
     AFFILIATE_CHECK_LINKS = "affiliate.check_links"
     AFFILIATE_CHECK_PENDING = "affiliate.check_pending"
+    DISCORD_NOTIFY_PROPOSED = "discord.notify_proposed"
 
 
 class Queue(StrEnum):
