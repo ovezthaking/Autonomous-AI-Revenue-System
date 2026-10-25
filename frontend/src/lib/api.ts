@@ -515,4 +515,3 @@ export const fetchMetricsByContent = async (): Promise<
   const res = await fetch(`${API}/metrics/by-content`, { cache: "no-store" });
   return parse<Array<ContentMetricRow>>(res);
 };
-
