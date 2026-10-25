@@ -124,7 +124,7 @@ def test_normalize_treats_case_and_spacing_as_the_same_name():
 
     class _Rows:
         def all(self):
-            return [("Vendor A", "https://kept.test/old")]
+            return [("Vendor A", "https://kept.test/old", None, None)]
 
     class _DB:
         def execute(self, _stmt):
@@ -150,7 +150,12 @@ def test_drop_known_treats_www_as_the_same_host():
     class _Rows:
         def all(self):
             return [
-                ("LiveAgent", "https://www.liveagent.com/affiliate-program")
+                (
+                    "LiveAgent",
+                    "https://www.liveagent.com/affiliate-program",
+                    None,
+                    None,
+                )
             ]
 
     class _DB:
