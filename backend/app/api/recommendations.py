@@ -15,7 +15,9 @@ from app.schemas.affiliate_program import (
     RecommendationCreate,
     RecommendationRead,
 )
+from app.services.discord_hitl import notify_proposed
 from app.services.hitl import decide_program
+from app.services.hitl_subject import subject_from_program
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 DbSession = Annotated[Session, Depends(get_db)]
@@ -38,6 +40,7 @@ def create_recommendation(
     db.add(row)
     db.commit()
     db.refresh(row)
+    notify_proposed(db, subject_from_program(row))
     return row
 
 
