@@ -1,10 +1,13 @@
+import logging
 import uuid
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
+from revenue_swarm.celery import celery_app
 from revenue_swarm.enums import ApplicationStatus, ProgramStatus
 from revenue_swarm.llm import generate_rationale
 from revenue_swarm.models.affiliate_program import AffiliateProgram
+from revenue_swarm.tasks import TaskName
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,12 +20,24 @@ from research_agent.search import search
 from research_agent.settings import RESEARCH_NICHE
 from research_agent.validate import is_usable, looks_like_program_url
 
+logger = logging.getLogger(__name__)
+
 PROMPT_TEMPLATE = (
     "You evaluate affiliate programs for a niche blog about business "
     "software. Program: {name} ({category}, network: {network}, "
     "commission: {commission}). Write two sentences explaining why it is "
     "worth promoting. Be concrete, no marketing fluff, no bullet points."
 )
+
+
+def _request_cards(rows: list[AffiliateProgram]) -> None:
+    for row in rows:
+        try:
+            celery_app.send_task(
+                TaskName.DISCORD_NOTIFY_PROPOSED, args=[str(row.id)]
+            )
+        except Exception:
+            logger.exception("Discord card request failed")
 
 
 def discover_programs_v1(
@@ -61,6 +76,7 @@ def discover_programs_v1(
     db.commit()
     for row in created:
         db.refresh(row)
+    _request_cards(created)
 
     return {
         "created": len(created),
@@ -124,6 +140,7 @@ def discover_programs_v2(
     fresh = _drop_known(db, candidates)[:limit]
     created = [_persist(db, c, task_id) for c in fresh]
     db.commit()
+    _request_cards(created)
 
     return {
         "hits": len(hits),
@@ -153,15 +170,10 @@ def _drop_known(
         )
     ).all()
     active_rows: list[tuple[str, str | None]] = []
-    for row in rows:
-        if len(row) == 2:
-            name, url = row
+    for name, url, app_status, extras in rows:
+        not_declined = app_status != ApplicationStatus.DECLINED.value
+        if not_declined or _still_blocked(extras, now):
             active_rows.append((name, url))
-        else:
-            name, url, app_status, extras = row
-            not_declined = app_status != ApplicationStatus.DECLINED.value
-            if not_declined or _still_blocked(extras, now):
-                active_rows.append((name, url))
     known_names = {_normalize(name) for name, _url in active_rows}
     known_hosts = {_host(url) for _name, url in active_rows if url}
     seen_names: set[str] = set()
