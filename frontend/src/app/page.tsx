@@ -110,6 +110,7 @@ function chapterStatusBadge(status: string) {
 export default function DashboardPage() {
   const [proposed, setProposed] = useState<Recommendation[]>([]);
   const [approved, setApproved] = useState<Recommendation[]>([]);
+  const [rejected, setRejected] = useState<Recommendation[]>([]);
   const [applications, setApplications] = useState<Recommendation[]>([]);
   const [brokenLinks, setBrokenLinks] = useState<AffiliateLink[]>([]);
   const [contentMetrics, setContentMetrics] = useState<ContentMetricRow[]>([]);
@@ -153,6 +154,7 @@ export default function DashboardPage() {
     const [
       proposedRows,
       approvedRows,
+      rejectedRows,
       applicationRows,
       brokenRows,
       metricRows,
@@ -164,6 +166,7 @@ export default function DashboardPage() {
     ] = await Promise.all([
       fetchRecommendations("proposed"),
       fetchRecommendations("approved"),
+      fetchRecommendations("rejected"),
       fetchApplications(),
       fetchBrokenLinks(),
       fetchMetricsByContent(),
@@ -175,6 +178,11 @@ export default function DashboardPage() {
     ]);
     setProposed(proposedRows);
     setApproved(approvedRows);
+    setRejected(
+      [...rejectedRows].sort((a, b) =>
+        (b.updated_at ?? "").localeCompare(a.updated_at ?? ""),
+      ),
+    );
     setApplications(applicationRows);
     setBrokenLinks(brokenRows);
     setContentMetrics(metricRows);
@@ -1214,6 +1222,38 @@ export default function DashboardPage() {
         </section>
       ) : null}
 
+      {/* REJECTED PROGRAMS */}
+      {activeTab === "all" || activeTab === "programs" ? (
+        <section>
+          <h2 className="mb-3 text-lg font-medium">Rejected programs</h2>
+          {rejected.length === 0 ? (
+            <p className="text-sm text-neutral-500">No rejected programs.</p>
+          ) : null}
+          <ul className="space-y-4">
+            {rejected.map((item) => (
+              <li key={item.id} className="rounded border bg-white p-4">
+                <div className="font-medium">{item.name}</div>
+                {item.rationale ? (
+                  <p className="text-sm text-neutral-600 mt-1">
+                    {item.rationale}
+                  </p>
+                ) : null}
+                {item.url ? (
+                  <a
+                    className="text-xs text-blue-600 underline block mt-1"
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {item.url}
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {/* APPLICATIONS PIPELINE */}
       {activeTab === "all" || activeTab === "programs" ? (
         <section>
@@ -1339,7 +1379,9 @@ export default function DashboardPage() {
                 className="rounded border bg-white p-4 space-y-2"
               >
                 <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600">
-                  <span className="font-mono font-semibold">/go/{link.slug}</span>
+                  <span className="font-mono font-semibold">
+                    /go/{link.slug}
+                  </span>
                   <span>&bull;</span>
                   <span>{link.network}</span>
                   {link.program_name ? (
