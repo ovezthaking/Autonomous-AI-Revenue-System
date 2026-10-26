@@ -39,19 +39,36 @@ jobs:
   python-test:
     name: Python Tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: aiswarm
+          POSTGRES_PASSWORD: test1234
+          POSTGRES_DB: swarm_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U aiswarm -d swarm_db_test"
+          --health-interval=3s
+          --health-timeout=3s
+          --health-retries=10
+      redis:
+        image: redis:8.10.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=3s
+          --health-timeout=3s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system dependencies for ebook-agent (Pandoc + WeasyPrint)
+      - name: Install Pandoc
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            fonts-dejavu \
-            libcairo2 \
-            libharfbuzz-subset0 \
-            libpango-1.0-0 \
-            libpangoft2-1.0-0 \
-            pandoc
+          curl -fL https://github.com/jgm/pandoc/releases/download/3.6.4/pandoc-3.6.4-linux-amd64.tar.gz \
+            | sudo tar -xz -C /usr/local --strip-components=1
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -92,5 +109,7 @@ jobs:
       - name: Prettier check
         run: npm run format:check
 
-      - name: TypeScript typecheck
-        run: npx tsc --noEmit
+      - name: Generate Next.js route types & TypeScript typecheck
+        run: |
+          npx next typegen
+          npx tsc --noEmit
