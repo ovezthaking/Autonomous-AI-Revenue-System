@@ -42,6 +42,8 @@ class HitlEntityType(StrEnum):
     AFFILIATE_PROGRAM = "affiliate_program"
     CONTENT_ITEM = "content_item"
     PRODUCT = "product"
+    PRODUCT_IDEA = "product_idea"
+    SHOP_LISTING = "shop_listing"
 
 
 class TaskType(StrEnum):
@@ -66,6 +68,11 @@ class PublishTargetName(StrEnum):
     X = "x"
 
 
+class ProductKind(StrEnum):
+    EBOOK = "ebook"
+    PRINTABLE = "printable"
+
+
 class ProductStatus(StrEnum):
     DRAFT = "draft"
     OUTLINING = "outlining"
@@ -74,6 +81,20 @@ class ProductStatus(StrEnum):
     ASSEMBLED = "assembled"
     LIVE = "live"
     ARCHIVED = "archived"
+
+
+class ListingStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+    NEEDS_REVIEW = "needs_review"
+
+
+class IdeaStatus(StrEnum):
+    PROPOSED = "proposed"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    BLOCKED = "blocked"
 
 
 class OrderStatus(StrEnum):
