@@ -26,6 +26,14 @@ class TaskName(StrEnum):
     AFFILIATE_CHECK_LINKS = "affiliate.check_links"
     AFFILIATE_CHECK_PENDING = "affiliate.check_pending"
     DISCORD_NOTIFY_PROPOSED = "discord.notify_proposed"
+    SHOP_BUILD = "shop.build"
+    SHOP_LIST = "shop.list"
+    SHOP_ACTIVATE = "shop.activate"
+    SHOP_SYNC = "shop.sync_ebooks"
+    SHOP_FULFILL = "shop.fulfill"
+    SHOP_REFUND = "shop.refund"
+    TRENDS_COLLECT = "trends.collect"
+    TRENDS_PROPOSE = "trends.propose"
 
 
 class Queue(StrEnum):
@@ -34,6 +42,8 @@ class Queue(StrEnum):
     CONTENT = "content"
     EBOOK = "ebook"
     SALES = "sales"
+    SHOP = "shop"
+    TRENDS = "trends"
 
 
 Handler = Callable[[Session, AgentTask], dict[str, object]]
