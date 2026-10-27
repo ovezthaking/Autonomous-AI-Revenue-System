@@ -21,6 +21,14 @@ celery_app.conf.task_routes = {
     TaskName.EBOOK_ASSEMBLE.value: {"queue": Queue.EBOOK.value},
     TaskName.SALES_FULFILL.value: {"queue": Queue.SALES.value},
     TaskName.SALES_REFUND.value: {"queue": Queue.SALES.value},
+    TaskName.SHOP_BUILD.value: {"queue": Queue.SHOP.value},
+    TaskName.SHOP_LIST.value: {"queue": Queue.SHOP.value},
+    TaskName.SHOP_ACTIVATE.value: {"queue": Queue.SHOP.value},
+    TaskName.SHOP_SYNC.value: {"queue": Queue.SHOP.value},
+    TaskName.SHOP_FULFILL.value: {"queue": Queue.SHOP.value},
+    TaskName.SHOP_REFUND.value: {"queue": Queue.SHOP.value},
+    TaskName.TRENDS_COLLECT.value: {"queue": Queue.TRENDS.value},
+    TaskName.TRENDS_PROPOSE.value: {"queue": Queue.TRENDS.value},
 }
 celery_app.conf.beat_schedule = {
     "publish-due-every-5-min": {
@@ -39,6 +47,18 @@ celery_app.conf.beat_schedule = {
     "affiliate-check-pending": {
         "task": TaskName.AFFILIATE_CHECK_PENDING.value,
         "schedule": crontab(hour=8, minute=0),
+    },
+    "shop-sync-ebooks-daily": {
+        "task": TaskName.SHOP_SYNC.value,
+        "schedule": crontab(hour=5, minute=0),
+    },
+    "trends-collect-daily": {
+        "task": TaskName.TRENDS_COLLECT.value,
+        "schedule": crontab(hour=6, minute=0),
+    },
+    "trends-propose-daily": {
+        "task": TaskName.TRENDS_PROPOSE.value,
+        "schedule": crontab(hour=6, minute=30),
     },
 }
 celery_app.conf["timezone"] = "UTC"
