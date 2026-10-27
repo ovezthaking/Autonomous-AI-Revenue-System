@@ -84,6 +84,37 @@ IMPACT_AUTH_TOKEN = os.getenv("IMPACT_AUTH_TOKEN", "") or ""
 CJ_API_KEY = os.getenv("CJ_API_KEY", "") or ""
 AMAZON_PARTNER_TAG = os.getenv("AMAZON_PARTNER_TAG", "") or ""
 
+# Shop & Shopify digital store
+SHOP_ENABLED = getenv("SHOP_ENABLED", "0") == "1"
+SHOP_PLATFORM = getenv("SHOP_PLATFORM", "fake")
+SHOP_LISTING_STATUS = getenv("SHOP_LISTING_STATUS", "draft")
+SHOP_MAX_NEW_LISTINGS_PER_DAY = int(
+    getenv("SHOP_MAX_NEW_LISTINGS_PER_DAY", "3")
+)
+SHOP_PRICE_MIN_CENTS = int(getenv("SHOP_PRICE_MIN_CENTS", "300"))
+SHOP_PRICE_MAX_CENTS = int(getenv("SHOP_PRICE_MAX_CENTS", "2900"))
+
+SHOPIFY_SHOP = os.getenv("SHOPIFY_SHOP", "") or ""
+SHOPIFY_CLIENT_ID = os.getenv("SHOPIFY_CLIENT_ID", "") or ""
+SHOPIFY_CLIENT_SECRET = os.getenv("SHOPIFY_CLIENT_SECRET", "") or ""
+SHOPIFY_API_VERSION = getenv("SHOPIFY_API_VERSION", "2026-07")
+SHOPIFY_VAT_COLLECTION_ID = os.getenv("SHOPIFY_VAT_COLLECTION_ID", "") or ""
+SHOPIFY_PUBLICATION_ID = os.getenv("SHOPIFY_PUBLICATION_ID", "") or ""
+
+# Trends agent
+TRENDS_ENABLED = getenv("TRENDS_ENABLED", "0") == "1"
+TRENDS_SOURCES = getenv("TRENDS_SOURCES", "own,search")
+TRENDS_MAX_IDEAS_PER_RUN = int(getenv("TRENDS_MAX_IDEAS_PER_RUN", "5"))
+GSC_SITE_URL = os.getenv("GSC_SITE_URL", "") or ""
+GSC_CREDENTIALS_JSON = os.getenv("GSC_CREDENTIALS_JSON", "") or ""
+
 NETWORK_SECRETS = tuple(
-    s for s in (AWIN_API_TOKEN, IMPACT_AUTH_TOKEN, CJ_API_KEY) if s
+    s
+    for s in (
+        AWIN_API_TOKEN,
+        IMPACT_AUTH_TOKEN,
+        CJ_API_KEY,
+        SHOPIFY_CLIENT_SECRET,
+    )
+    if s
 )
