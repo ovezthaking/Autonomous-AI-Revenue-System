@@ -23,6 +23,14 @@ os.environ["DISCORD_APPLICATION_ID"] = ""
 os.environ["DISCORD_GUILD_ID"] = ""
 os.environ["DISCORD_CHANNEL_ID"] = ""
 os.environ["DISCORD_ALLOWED_USER_IDS"] = ""
+os.environ["SHOP_ENABLED"] = "0"
+os.environ["SHOP_PLATFORM"] = "fake"
+os.environ["SHOPIFY_SHOP"] = "test-shop"
+os.environ["SHOPIFY_CLIENT_ID"] = "test-client-id"
+os.environ["SHOPIFY_CLIENT_SECRET"] = "test-shopify-secret"
+os.environ["SHOPIFY_VAT_COLLECTION_ID"] = ""
+os.environ["SHOPIFY_PUBLICATION_ID"] = "gid://shopify/Publication/1"
+os.environ["TRENDS_ENABLED"] = "0"
 
 import uuid  # noqa: E402
 from collections.abc import Generator  # noqa: E402
@@ -50,6 +58,9 @@ from revenue_swarm.models import (  # noqa: E402
     Order,
     PaymentEvent,
     Product,
+    ProductIdea,
+    ProductListing,
+    TrendSignal,
 )
 from revenue_swarm.models.publication import Publication  # noqa: E402
 
@@ -188,11 +199,15 @@ def real_session(db_engine: Engine) -> Generator[Session]:
         session.query(DownloadGrant).delete()
         session.query(Order).delete()
         session.query(PaymentEvent).delete()
+        session.query(ProductListing).delete()
         session.query(EbookChapter).delete()
         session.query(Product).delete()
+        session.query(ProductIdea).delete()
+        session.query(TrendSignal).delete()
         session.query(
             Publication
         ).delete()  # <-- nowa linia, MUSI być przed ContentItem
+
         session.query(LinkClick).delete()
         session.query(AffiliateLink).delete()
         session.query(AffiliateMetric).delete()

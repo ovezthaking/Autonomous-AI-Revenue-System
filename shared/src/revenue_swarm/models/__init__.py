@@ -10,8 +10,11 @@ from revenue_swarm.models.link_click import LinkClick
 from revenue_swarm.models.order import Order
 from revenue_swarm.models.payment_event import PaymentEvent
 from revenue_swarm.models.product import Product
+from revenue_swarm.models.product_idea import ProductIdea
+from revenue_swarm.models.product_listing import ProductListing
 from revenue_swarm.models.publication import Publication
 from revenue_swarm.models.task import AgentTask
+from revenue_swarm.models.trend_signal import TrendSignal
 
 __all__ = [
     "AffiliateLink",
@@ -27,5 +30,8 @@ __all__ = [
     "Order",
     "PaymentEvent",
     "Product",
+    "ProductIdea",
+    "ProductListing",
     "Publication",
+    "TrendSignal",
 ]
