@@ -1,24 +1,18 @@
-import hashlib
-import secrets
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
-from revenue_swarm import config
 from revenue_swarm.celery import celery_app
 from revenue_swarm.db import SessionLocal
 from revenue_swarm.email.resend import send_delivery_email
 from revenue_swarm.enums import OrderStatus
+from revenue_swarm.fulfillment import create_grant
 from revenue_swarm.models.download_grant import DownloadGrant
 from revenue_swarm.models.order import Order
 from revenue_swarm.models.payment_event import PaymentEvent
 from revenue_swarm.tasks import TaskName
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-
-def sha256_hex(value: str) -> str:
-    return hashlib.sha256(value.encode()).hexdigest()
 
 
 def _event(db: Session, event_id: str) -> PaymentEvent | None:
@@ -144,21 +138,8 @@ def _email_from(event: PaymentEvent) -> str | None:
     return None
 
 
-def create_grant(db: Session, order: Order) -> tuple[str, DownloadGrant]:
-    token = secrets.token_urlsafe(32)
-    grant = DownloadGrant(
-        order_id=order.id,
-        token_hash=sha256_hex(token),
-        expires_at=datetime.now(UTC)
-        + timedelta(days=config.DOWNLOAD_TOKEN_TTL_DAYS),
-        max_downloads=config.DOWNLOAD_MAX_PER_GRANT,
-    )
-    db.add(grant)
-    db.commit()
-    return token, grant
-
-
 def _grants(db: Session, order_id: uuid.UUID) -> list[DownloadGrant]:
+
     return list(
         db.scalars(
             select(DownloadGrant).where(DownloadGrant.order_id == order_id)
