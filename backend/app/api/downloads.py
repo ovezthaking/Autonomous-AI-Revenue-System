@@ -90,10 +90,13 @@ def verify_download_link(
             detail="Too many requests",
         )
     grant, _order, product = _validate_grant(db, token, lock=False)
+    extras = product.extras or {}
+    formats = ["a4", "letter"] if extras.get("letter_pdf") else ["pdf"]
     return {
         "status": "ready",
         "title": product.title,
         "slug": product.slug,
+        "formats": formats,
         "downloads_used": grant.downloads,
         "max_downloads": grant.max_downloads,
         "remaining_downloads": grant.max_downloads - grant.downloads,
@@ -103,7 +106,10 @@ def verify_download_link(
 
 @router.post("/download/{token}")
 def consume_download_link(
-    token: str, request: Request, db: DbSession
+    token: str,
+    request: Request,
+    db: DbSession,
+    format: str = "a4",
 ) -> Response:
     """POST consumes 1 download and issues a 5-min presigned URL."""
     ip = request.client.host if request.client else "unknown"
@@ -116,9 +122,15 @@ def consume_download_link(
     grant.downloads += 1
     grant.last_ip = request.client.host if request.client else None
     db.commit()
-    log.info("download token=%s", token[:8])
+    log.info("download token=%s format=%s", token[:8], format)
     assert product.asset_pdf is not None
-    url = storage.presigned_url(product.asset_pdf, expires_in=300)
+    letter_pdf = (product.extras or {}).get("letter_pdf")
+    asset_key = (
+        str(letter_pdf)
+        if format.lower() == "letter" and letter_pdf
+        else product.asset_pdf
+    )
+    url = storage.presigned_url(asset_key, expires_in=300)
 
     accept = request.headers.get("accept", "")
     if "application/json" in accept:
