@@ -4,12 +4,15 @@ import html
 import subprocess
 from pathlib import Path
 
-from pypdf import PdfReader
 from revenue_swarm.models.ebook_chapter import EbookChapter
 from revenue_swarm.models.product import Product
+from revenue_swarm.render.pdf import (
+    MIN_PDF_BYTES,
+    render_pdf,
+    validate_pdf,
+)
 
 CSS_PATH = Path(__file__).parent / "style.css"
-MIN_PDF_BYTES = 5_000
 
 
 def cover_html(product: Product) -> str:
@@ -44,8 +47,15 @@ def pandoc(
 
 
 def validate_assets(pdf_path: Path, chapter_count: int) -> None:
-    size = pdf_path.stat().st_size
-    pages = len(PdfReader(str(pdf_path)).pages)
-    if size <= MIN_PDF_BYTES or pages < chapter_count:
-        msg = f"pdf too small: {size} bytes, {pages} pages"
-        raise RuntimeError(msg)
+    validate_pdf(pdf_path, min_pages=chapter_count, min_bytes=MIN_PDF_BYTES)
+
+
+__all__ = [
+    "CSS_PATH",
+    "MIN_PDF_BYTES",
+    "build_markdown",
+    "cover_html",
+    "pandoc",
+    "render_pdf",
+    "validate_assets",
+]
