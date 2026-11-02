@@ -1,0 +1,41 @@
+/* Printable worksheet stylesheet */
+body {
+  font-family: "DejaVu Sans", sans-serif;
+  color: #1f2937;
+  line-height: 1.5;
+  font-size: 11pt;
+  margin: 0;
+  padding: 0;
+}
+
+article.page-break {
+  page-break-before: always;
+}
+
+h1 {
+  font-size: 18pt;
+  border-bottom: 2px solid #111827;
+  padding-bottom: 4mm;
+  margin-top: 0;
+  margin-bottom: 6mm;
+}
+
+h2 {
+  font-size: 12pt;
+  margin-top: 4mm;
+  margin-bottom: 2mm;
+  color: #374151;
+}
+
+section {
+  border: 1px solid #d1d5db;
+  border-radius: 2mm;
+  padding: 4mm;
+  margin-bottom: 5mm;
+}
+
+.lines .line {
+  border-bottom: 1px dashed #9ca3af;
+  height: 7mm;
+  margin-bottom: 2mm;
+}
