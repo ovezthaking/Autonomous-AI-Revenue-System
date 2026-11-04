@@ -16,6 +16,9 @@ COPY agents/research/pyproject.toml agents/research/pyproject.toml
 COPY agents/content/pyproject.toml agents/content/pyproject.toml
 COPY agents/ebook/pyproject.toml agents/ebook/pyproject.toml
 COPY agents/sales/pyproject.toml agents/sales/pyproject.toml
+COPY agents/shop/pyproject.toml agents/shop/pyproject.toml
+COPY agents/trends/pyproject.toml agents/trends/pyproject.toml
+
 
 
 RUN --mount=type=cache,target=/root/.cache/uv \

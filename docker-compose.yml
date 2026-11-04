@@ -144,6 +144,39 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  shop-worker:
+    build:
+      context: .
+      dockerfile: agents/shop/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  trends-worker:
+    build:
+      context: .
+      dockerfile: agents/trends/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+
 
   beat:
     build:
