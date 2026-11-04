@@ -13,6 +13,8 @@ from app.api.products import router as products_router
 from app.api.publications import router as publications_router
 from app.api.recommendations import router as recommendations_router
 from app.api.research import router as research_router
+from app.api.shop import router as shop_router
+from app.api.shopify_webhooks import router as shopify_webhooks_router
 from app.api.tasks import router as tasks_router
 from app.api.webhooks import router as webhooks_router
 from app.core.config import CORS_ORIGINS
@@ -26,12 +28,14 @@ app.include_router(publications_router)
 app.include_router(products_router)
 app.include_router(checkout_router)
 app.include_router(webhooks_router)
+app.include_router(shopify_webhooks_router)
 app.include_router(downloads_router)
 app.include_router(orders_router)
 app.include_router(affiliate_router)
 app.include_router(links_router)
 app.include_router(metrics_router)
 app.include_router(discord_router)
+app.include_router(shop_router)
 
 
 origins = [o.strip() for o in CORS_ORIGINS.split(",") if o.strip()]
