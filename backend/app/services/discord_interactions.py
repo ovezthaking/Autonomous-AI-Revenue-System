@@ -14,8 +14,16 @@ from sqlalchemy.orm import Session
 from app.services.discord_auth import is_allowed
 from app.services.discord_cards import decided_payload, parse_custom_id
 from app.services.discord_hitl import edit_decided_card
-from app.services.hitl import decide_program
-from app.services.hitl_subject import subject_from_program
+from app.services.hitl import (
+    decide_listing,
+    decide_product_idea,
+    decide_program,
+)
+from app.services.hitl_subject import (
+    subject_from_idea,
+    subject_from_listing,
+    subject_from_program,
+)
 
 
 def ephemeral(text: str) -> dict:
@@ -117,11 +125,23 @@ def _apply(
     return updated, None
 
 
-def _decision_actor(db: Session, entity_id: uuid.UUID) -> str:
+def _decision(action: str) -> HitlDecisionValue:
+    return (
+        HitlDecisionValue.APPROVED
+        if action == "approve"
+        else HitlDecisionValue.REJECTED
+    )
+
+
+def _decision_actor(
+    db: Session,
+    entity_id: uuid.UUID,
+    entity_type: str = HitlEntityType.AFFILIATE_PROGRAM.value,
+) -> str:
     stmt = (
         select(HitlDecision.actor)
         .where(
-            HitlDecision.entity_type == HitlEntityType.AFFILIATE_PROGRAM.value,
+            HitlDecision.entity_type == entity_type,
             HitlDecision.entity_id == entity_id,
         )
         .order_by(HitlDecision.created_at.desc())
@@ -142,15 +162,48 @@ def _handle_button(
     if parsed is None:
         return ephemeral("Unknown button.")
     entity_type, entity_id, action = parsed
-    if entity_type != HitlEntityType.AFFILIATE_PROGRAM.value:
+    if entity_type == HitlEntityType.AFFILIATE_PROGRAM.value:
+        row = db.get(AffiliateProgram, entity_id)
+        if row is None:
+            return ephemeral("Program not found.")
+        updated, error = _apply(db, row, action, user_id)
+        if error is not None or updated is None:
+            return ephemeral(error or "Decision failed.")
+        subject = subject_from_program(updated)
+    elif entity_type == HitlEntityType.PRODUCT_IDEA.value:
+        try:
+            updated_idea = decide_product_idea(
+                db,
+                entity_id,
+                _decision(action),
+                None,
+                actor=f"discord:{user_id}",
+            )
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                return ephemeral("Idea not found.")
+            if exc.status_code == 409:
+                return ephemeral("Idea already decided.")
+            raise
+        subject = subject_from_idea(updated_idea)
+    elif entity_type == HitlEntityType.SHOP_LISTING.value:
+        try:
+            updated_listing = decide_listing(
+                db,
+                entity_id,
+                _decision(action),
+                None,
+                actor=f"discord:{user_id}",
+            )
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                return ephemeral("Listing not found.")
+            if exc.status_code == 409:
+                return ephemeral("Listing already decided.")
+            raise
+        subject = subject_from_listing(updated_listing)
+    else:
         return ephemeral("This decision is not wired yet.")
-    row = db.get(AffiliateProgram, entity_id)
-    if row is None:
-        return ephemeral("Program not found.")
-    updated, error = _apply(db, row, action, user_id)
-    if error is not None or updated is None:
-        return ephemeral(error or "Decision failed.")
-    subject = subject_from_program(updated)
     body = decided_payload(subject, dashboard_url, f"discord:{user_id}")
     return {"type": 7, "data": body}
 

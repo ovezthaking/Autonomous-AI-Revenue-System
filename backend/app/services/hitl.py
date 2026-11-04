@@ -1,12 +1,15 @@
 import uuid
 
 from fastapi import HTTPException, status
+from revenue_swarm import config as shared_config
 from revenue_swarm.celery import celery_app
-from revenue_swarm.config import EBOOK_MIN_HUMAN_REVIEW
+from revenue_swarm.config import EBOOK_MIN_HUMAN_REVIEW, SHOP_ENABLED
 from revenue_swarm.enums import (
     ContentStatus,
     HitlDecisionValue,
     HitlEntityType,
+    IdeaStatus,
+    ListingStatus,
     ProductStatus,
     ProgramStatus,
 )
@@ -14,12 +17,18 @@ from revenue_swarm.models.affiliate_program import AffiliateProgram
 from revenue_swarm.models.content_item import ContentItem
 from revenue_swarm.models.hitl_decision import HitlDecision
 from revenue_swarm.models.product import Product
+from revenue_swarm.models.product_idea import ProductIdea
+from revenue_swarm.models.product_listing import ProductListing
 from revenue_swarm.tasks import TaskName
 from sqlalchemy.orm import Session
 
 from app.core.config import HITL_ACTOR
 from app.services.discord_hitl import edit_decided_card
-from app.services.hitl_subject import subject_from_program
+from app.services.hitl_subject import (
+    subject_from_idea,
+    subject_from_listing,
+    subject_from_program,
+)
 from app.services.webhook import notify_hitl_decision
 
 NOT_FOUND_DETAIL = "Not found"
@@ -187,4 +196,86 @@ def decide_product(
     if task is not None:
         celery_app.send_task(task, args=[str(row.id)])
     notify_hitl_decision(row.title, row.status)
+    return row
+
+
+def decide_product_idea(
+    db: Session,
+    idea_id: uuid.UUID,
+    decision: HitlDecisionValue,
+    comment: str | None,
+    actor: str | None = None,
+) -> ProductIdea:
+    chosen_actor = actor if actor else HITL_ACTOR
+    row = db.get(ProductIdea, idea_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL
+        )
+    if row.status != IdeaStatus.PROPOSED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Idea is not proposed",
+        )
+    queue_build = False
+    if decision is HitlDecisionValue.REJECTED:
+        row.status = IdeaStatus.REJECTED.value
+    else:
+        row.status = IdeaStatus.APPROVED.value
+        if SHOP_ENABLED or shared_config.SHOP_ENABLED:
+            queue_build = True
+    _record_decision(
+        db,
+        HitlEntityType.PRODUCT_IDEA,
+        row.id,
+        decision,
+        comment,
+        actor=chosen_actor,
+    )
+    db.commit()
+    db.refresh(row)
+    if queue_build:
+        celery_app.send_task(TaskName.SHOP_BUILD.value, args=[str(row.id)])
+    notify_hitl_decision(row.title, row.status)
+    edit_decided_card(db, subject_from_idea(row), chosen_actor)
+    return row
+
+
+def decide_listing(
+    db: Session,
+    listing_id: uuid.UUID,
+    decision: HitlDecisionValue,
+    comment: str | None,
+    actor: str | None = None,
+) -> ProductListing:
+    chosen_actor = actor if actor else HITL_ACTOR
+    row = db.get(ProductListing, listing_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL
+        )
+    if row.status != ListingStatus.DRAFT.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Listing is not a draft",
+        )
+    queue_activate = False
+    if decision is HitlDecisionValue.APPROVED:
+        queue_activate = True
+    else:
+        row.status = ListingStatus.ARCHIVED.value
+    _record_decision(
+        db,
+        HitlEntityType.SHOP_LISTING,
+        row.id,
+        decision,
+        comment,
+        actor=chosen_actor,
+    )
+    db.commit()
+    db.refresh(row)
+    if queue_activate:
+        celery_app.send_task(TaskName.SHOP_ACTIVATE.value, args=[str(row.id)])
+    notify_hitl_decision(row.handle, row.status)
+    edit_decided_card(db, subject_from_listing(row), chosen_actor)
     return row
