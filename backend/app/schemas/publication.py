@@ -10,7 +10,7 @@ class PublicationRead(BaseModel):
     content_item_id: uuid.UUID
     target: str
     status: str
-    attempts: str
+    attempts: int
     external_id: str | None
     external_url: str | None
     error: str | None
