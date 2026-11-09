@@ -229,3 +229,188 @@ def test_command_with_missing_uuid_returns_program_not_found(monkeypatch):
         "data": {"content": "Program not found.", "flags": 64},
     }
     assert called == []
+
+
+def test_command_option_missing_and_empty_program_and_uuid_resolution(
+    monkeypatch,
+):
+    import pytest
+
+    db = MagicMock()
+    # 1. Unknown command name -> line 214
+    res_unknown_cmd = handle_interaction(
+        db,
+        _command_payload("archive", "acme"),
+        allowed=ALLOWED,
+        dashboard_url=DASHBOARD,
+    )
+    assert res_unknown_cmd["data"]["content"] == "Unknown command."
+
+    # 2. Missing option -> command_option returns "" -> "Missing program."
+    res_missing_opt = handle_interaction(
+        db,
+        {
+            "type": 2,
+            "member": {"user": {"id": "42"}},
+            "data": {"name": "approve", "options": [{"name": "other"}]},
+        },
+        allowed=ALLOWED,
+        dashboard_url=DASHBOARD,
+    )
+    assert res_missing_opt["data"]["content"] == "Missing program."
+
+    # 3. Valid UUID resolution (line 61) + _apply error in command (line 220)
+    program = _program(name="ACME", status=ProgramStatus.APPROVED.value)
+    db.get.side_effect = [program, None]
+
+    def fake_decide_409(*_a, **_kw):
+        raise HTTPException(status_code=409, detail="conflict")
+
+    monkeypatch.setattr(
+        discord_interactions, "decide_program", fake_decide_409
+    )
+    res_cmd_err = handle_interaction(
+        db,
+        _command_payload("approve", str(program.id)),
+        allowed=ALLOWED,
+        dashboard_url=DASHBOARD,
+    )
+    assert res_cmd_err["data"]["content"] == "Program already decided."
+
+    # 4. Non-409 HTTPException in _apply re-raises (line 124)
+    db.get.side_effect = None
+    db.get.return_value = program
+
+    def fake_decide_500(*_a, **_kw):
+        raise HTTPException(status_code=500, detail="boom")
+
+    monkeypatch.setattr(
+        discord_interactions, "decide_program", fake_decide_500
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        handle_interaction(
+            db,
+            _command_payload("reject", str(program.id)),
+            allowed=ALLOWED,
+            dashboard_url=DASHBOARD,
+        )
+    assert exc_info.value.status_code == 500
+
+
+def test_unsupported_interaction_and_button_edge_cases(monkeypatch):
+    import pytest
+    from revenue_swarm.models.product_listing import ProductListing
+
+    db = MagicMock()
+
+    # 1. Unsupported interaction type (line 91)
+    res_unsup = handle_interaction(
+        db,
+        {"type": 99, "member": {"user": {"id": "42"}}},
+        allowed=ALLOWED,
+        dashboard_url=DASHBOARD,
+    )
+    assert res_unsup["data"]["content"] == "Unsupported interaction."
+
+    # 2. Unknown button custom_id (line 163)
+    res_bad_btn = handle_interaction(
+        db,
+        _button_payload("invalid-custom-id"),
+        allowed=ALLOWED,
+        dashboard_url=DASHBOARD,
+    )
+    assert res_bad_btn["data"]["content"] == "Unknown button."
+
+    # 3. Affiliate program button when program not in DB (line 168)
+    uid = uuid.uuid4()
+    db.get.return_value = None
+    res_missing_prog = handle_interaction(
+        db,
+        _button_payload(f"affiliate_program:{uid}:approve"),
+        allowed=ALLOWED,
+        dashboard_url=DASHBOARD,
+    )
+    assert res_missing_prog["data"]["content"] == "Program not found."
+
+    # 4. Product idea button: 404, 409, and 500 re-raise (lines 182-187)
+    for code, expected in [
+        (404, "Idea not found."),
+        (409, "Idea already decided."),
+    ]:
+        monkeypatch.setattr(
+            discord_interactions,
+            "decide_product_idea",
+            MagicMock(side_effect=HTTPException(status_code=code)),
+        )
+        res = handle_interaction(
+            db,
+            _button_payload(f"product_idea:{uid}:approve"),
+            allowed=ALLOWED,
+            dashboard_url=DASHBOARD,
+        )
+        assert res["data"]["content"] == expected
+
+    monkeypatch.setattr(
+        discord_interactions,
+        "decide_product_idea",
+        MagicMock(side_effect=HTTPException(status_code=500)),
+    )
+    with pytest.raises(HTTPException):
+        handle_interaction(
+            db,
+            _button_payload(f"product_idea:{uid}:approve"),
+            allowed=ALLOWED,
+            dashboard_url=DASHBOARD,
+        )
+
+    # 5. Shop listing button: success, 404, 409, and 500 re-raise
+    fake_listing = ProductListing(
+        id=uid,
+        product_id=uuid.uuid4(),
+        platform="shopify",
+        handle="rs-item",
+        status="active",
+    )
+    monkeypatch.setattr(
+        discord_interactions,
+        "decide_listing",
+        lambda *_a, **_kw: fake_listing,
+    )
+    res_listing_ok = handle_interaction(
+        db,
+        _button_payload(f"shop_listing:{uid}:approve"),
+        allowed=ALLOWED,
+        dashboard_url=DASHBOARD,
+    )
+    assert res_listing_ok["type"] == 7
+    assert "rs-item" in res_listing_ok["data"]["content"]
+
+    for code, expected in [
+        (404, "Listing not found."),
+        (409, "Listing already decided."),
+    ]:
+        monkeypatch.setattr(
+            discord_interactions,
+            "decide_listing",
+            MagicMock(side_effect=HTTPException(status_code=code)),
+        )
+        res = handle_interaction(
+            db,
+            _button_payload(f"shop_listing:{uid}:reject"),
+            allowed=ALLOWED,
+            dashboard_url=DASHBOARD,
+        )
+        assert res["data"]["content"] == expected
+
+    monkeypatch.setattr(
+        discord_interactions,
+        "decide_listing",
+        MagicMock(side_effect=HTTPException(status_code=500)),
+    )
+    with pytest.raises(HTTPException):
+        handle_interaction(
+            db,
+            _button_payload(f"shop_listing:{uid}:reject"),
+            allowed=ALLOWED,
+            dashboard_url=DASHBOARD,
+        )

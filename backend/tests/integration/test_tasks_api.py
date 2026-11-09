@@ -34,3 +34,12 @@ def test_get_task_returns_existing_task(client, make_task):
 def test_get_task_returns_404_for_unknown_id(client):
     response = client.get(f"/tasks/{uuid.uuid4()}")
     assert response.status_code == 404
+
+
+def test_list_tasks_returns_recent_tasks(client, make_task):
+    t1 = make_task(input={"prompt": "one"})
+    t2 = make_task(input={"prompt": "two"})
+    response = client.get("/tasks", params={"limit": 5})
+    assert response.status_code == 200
+    ids = {row["id"] for row in response.json()}
+    assert {str(t1.id), str(t2.id)} <= ids

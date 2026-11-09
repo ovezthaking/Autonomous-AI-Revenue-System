@@ -46,3 +46,9 @@ def test_verify_signature_rejects_skew_and_tampering():
         verify_signature(body, signature, timestamp, "", now=1700000000)
         is False
     )
+    assert (
+        verify_signature(
+            body, signature, "not-an-int", public_key, now=1700000000
+        )
+        is False
+    )

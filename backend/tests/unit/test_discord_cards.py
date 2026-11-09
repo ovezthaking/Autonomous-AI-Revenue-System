@@ -55,3 +55,16 @@ def test_parse_custom_id_roundtrip():
 def test_parse_custom_id_rejects_garbage():
     assert parse_custom_id("nope") is None
     assert parse_custom_id(f"affiliate_program:{'-' * 36}:approve") is None
+
+
+def test_pending_payload_clips_long_detail():
+    long_subject = HitlSubject(
+        entity_type="affiliate_program",
+        entity_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+        label="ACME",
+        detail="x" * 600,
+        url=None,
+        status="proposed",
+    )
+    payload = pending_payload(long_subject, "http://localhost:3000")
+    assert ("x" * 499 + "…") in payload["content"]

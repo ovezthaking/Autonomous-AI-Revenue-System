@@ -182,3 +182,29 @@ def test_patch_metrics_unknown_program_returns_404(client):
         json={"epc": 1.5},
     )
     assert response.status_code == 404
+
+
+def test_patch_affiliate_link_404_409_and_200(client, make_program):
+    # 404 for unknown program
+    res_404 = client.patch(
+        f"/recommendations/{uuid.uuid4()}/affiliate-link",
+        json={"affiliate_link": "https://acme.test/ref?id=1"},
+    )
+    assert res_404.status_code == 404
+
+    # 409 for proposed program
+    proposed = make_program(status="proposed")
+    res_409 = client.patch(
+        f"/recommendations/{proposed.id}/affiliate-link",
+        json={"affiliate_link": "https://acme.test/ref?id=1"},
+    )
+    assert res_409.status_code == 409
+
+    # 200 for approved program
+    approved = make_program(status="approved")
+    res_200 = client.patch(
+        f"/recommendations/{approved.id}/affiliate-link",
+        json={"affiliate_link": "https://acme.test/ref?id=1"},
+    )
+    assert res_200.status_code == 200
+    assert res_200.json()["affiliate_link"] == "https://acme.test/ref?id=1"

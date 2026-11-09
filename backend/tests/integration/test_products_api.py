@@ -176,3 +176,39 @@ def test_get_asset_url_returns_presigned_url(client, db_session, monkeypatch):
         f"/products/{product.id}/asset-url", params={"asset_type": "epub"}
     )
     assert res_epub.status_code == 404
+
+
+def test_live_products_by_slug_and_sample(client, db_session):
+    _product(db_session, status="draft", slug="draft-slug")
+    live = _product(db_session, status="live", slug="live-slug")
+    db_session.add(
+        EbookChapter(
+            product_id=live.id,
+            position=1,
+            title="Intro",
+            brief="Short brief",
+            body="Full chapter body",
+        )
+    )
+    db_session.commit()
+
+    # 1. GET /products/live
+    res_live = client.get("/products/live")
+    assert res_live.status_code == 200
+    assert [p["slug"] for p in res_live.json()] == ["live-slug"]
+
+    # 2. GET /products/by-slug/{slug}
+    assert client.get("/products/by-slug/draft-slug").status_code == 404
+    assert client.get("/products/by-slug/missing-slug").status_code == 404
+    res_slug = client.get("/products/by-slug/live-slug")
+    assert res_slug.status_code == 200
+    assert res_slug.json()["id"] == str(live.id)
+
+    # 3. GET /products/by-slug/{slug}/sample
+    assert client.get("/products/by-slug/draft-slug/sample").status_code == 404
+    res_sample = client.get("/products/by-slug/live-slug/sample")
+    assert res_sample.status_code == 200
+    body = res_sample.json()
+    assert body["slug"] == "live-slug"
+    assert len(body["chapters"]) == 1
+    assert body["sample_chapter"]["body"] == "Full chapter body"

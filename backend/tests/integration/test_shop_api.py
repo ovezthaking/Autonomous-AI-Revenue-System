@@ -159,3 +159,134 @@ def test_download_endpoint_supports_a4_and_letter_formats(
     )
     assert letter_resp.status_code == 200
     assert letter_resp.json()["url"].endswith("printable-dual-letter.pdf")
+
+
+def test_shop_ideas_and_listings_approve_reject_and_filter(client, db_session):
+    idea_approve = ProductIdea(
+        term="habit tracker",
+        title="Habit Tracker",
+        kind=ProductKind.PRINTABLE.value,
+        score=0.9,
+        score_breakdown={},
+        status=IdeaStatus.PROPOSED.value,
+    )
+    idea_reject = ProductIdea(
+        term="meal planner",
+        title="Meal Planner",
+        kind=ProductKind.PRINTABLE.value,
+        score=0.7,
+        score_breakdown={},
+        status=IdeaStatus.PROPOSED.value,
+    )
+    product = Product(
+        slug=f"rs-{uuid.uuid4().hex[:12]}",
+        title="Meal Planner",
+        kind=ProductKind.PRINTABLE.value,
+        price_cents=900,
+    )
+    db_session.add_all([idea_approve, idea_reject, product])
+    db_session.flush()
+    listing = ProductListing(
+        product_id=product.id,
+        platform="shopify",
+        handle=f"rs-{product.id.hex[:12]}",
+        status=ListingStatus.DRAFT.value,
+    )
+    db_session.add(listing)
+    db_session.commit()
+
+    # POST /ideas/{id}/approve and /reject
+    r_app = client.post(
+        f"/ideas/{idea_approve.id}/approve", json={"comment": "good"}
+    )
+    assert r_app.status_code == 200
+    assert r_app.json()["status"] == IdeaStatus.APPROVED.value
+
+    r_rej = client.post(
+        f"/ideas/{idea_reject.id}/reject", json={"comment": "skip"}
+    )
+    assert r_rej.status_code == 200
+    assert r_rej.json()["status"] == IdeaStatus.REJECTED.value
+
+    # GET /listings?status=draft
+    r_list = client.get("/listings", params={"status": "draft"})
+    assert r_list.status_code == 200
+    assert [row["id"] for row in r_list.json()] == [str(listing.id)]
+
+    # POST /listings/{id}/reject
+    r_lrej = client.post(
+        f"/listings/{listing.id}/reject", json={"comment": "no"}
+    )
+    assert r_lrej.status_code == 200
+    assert r_lrej.json()["status"] == ListingStatus.ARCHIVED.value
+
+
+def test_shopify_webhooks_hmac_duplicate_and_topics(
+    client, no_celery_broker, monkeypatch
+):
+    import base64
+    import hashlib
+    import hmac
+    import json
+
+    secret = "shpss_test_secret"
+    monkeypatch.setattr(
+        "app.api.shopify_webhooks.SHOPIFY_CLIENT_SECRET", secret
+    )
+
+    body = json.dumps({"id": 12345}).encode()
+    digest = hmac.new(secret.encode(), body, hashlib.sha256).digest()
+    valid_hmac = base64.b64encode(digest).decode()
+
+    # 1. Missing or invalid HMAC -> 401
+    assert client.post("/webhooks/shopify", content=body).status_code == 401
+    assert (
+        client.post(
+            "/webhooks/shopify",
+            content=body,
+            headers={"X-Shopify-Hmac-Sha256": "bad"},
+        ).status_code
+        == 401
+    )
+
+    # 2. orders/paid -> accepted + duplicate on retry
+    headers_paid = {
+        "X-Shopify-Hmac-Sha256": valid_hmac,
+        "X-Shopify-Webhook-Id": "wh_paid_1",
+        "X-Shopify-Topic": "orders/paid",
+    }
+    r1 = client.post("/webhooks/shopify", content=body, headers=headers_paid)
+    assert r1.status_code == 200
+    assert r1.json() == {"status": "accepted"}
+    assert (TaskName.SHOP_FULFILL.value, ["wh_paid_1"]) in no_celery_broker
+
+    r_dup = client.post(
+        "/webhooks/shopify", content=body, headers=headers_paid
+    )
+    assert r_dup.status_code == 200
+    assert r_dup.json() == {"status": "duplicate"}
+
+    # 3. refunds/create -> accepted
+    headers_refund = {
+        "X-Shopify-Hmac-Sha256": valid_hmac,
+        "X-Shopify-Webhook-Id": "wh_ref_1",
+        "X-Shopify-Topic": "refunds/create",
+    }
+    r_ref = client.post(
+        "/webhooks/shopify", content=body, headers=headers_refund
+    )
+    assert r_ref.status_code == 200
+    assert r_ref.json() == {"status": "accepted"}
+    assert (TaskName.SHOP_REFUND.value, ["wh_ref_1"]) in no_celery_broker
+
+    # 4. Other topic -> ignored
+    headers_other = {
+        "X-Shopify-Hmac-Sha256": valid_hmac,
+        "X-Shopify-Webhook-Id": "wh_other_1",
+        "X-Shopify-Topic": "products/update",
+    }
+    r_ign = client.post(
+        "/webhooks/shopify", content=body, headers=headers_other
+    )
+    assert r_ign.status_code == 200
+    assert r_ign.json() == {"status": "ignored"}

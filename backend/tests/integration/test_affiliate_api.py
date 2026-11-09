@@ -250,3 +250,140 @@ def test_metrics_by_content_attribution(
     assert matched["pending_cents"] == 1500
     assert matched["own_cents"] == 2900
     assert matched["cost_cents"] == 300
+
+
+def test_metrics_by_content_empty_returns_empty_list(client):
+    res = client.get("/metrics/by-content")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_applications_validation_and_conflict_branches(client, make_program):
+    import uuid
+
+    # 404 when program does not exist
+    assert (
+        client.post(f"/applications/{uuid.uuid4()}/applied").status_code == 404
+    )
+
+    # 409 when program is not approved
+    proposed = make_program(status="proposed")
+    assert (
+        client.post(f"/applications/{proposed.id}/applied").status_code == 409
+    )
+
+    # 409 when transitioning from invalid application_status
+    declined_prog = make_program(
+        status="approved", application_status="declined"
+    )
+    assert (
+        client.post(f"/applications/{declined_prog.id}/declined").status_code
+        == 409
+    )
+
+    # 422 unknown network
+    approved = make_program(status="approved")
+    res_unknown_net = client.post(
+        f"/applications/{approved.id}/active",
+        json={"network": "unknown_net"},
+    )
+    assert res_unknown_net.status_code == 422
+
+    # 422 awin without network_program_id
+    res_missing_pid = client.post(
+        f"/applications/{approved.id}/active",
+        json={"network": "awin"},
+    )
+    assert res_missing_pid.status_code == 422
+
+    # 422 manual without affiliate_link
+    res_missing_link = client.post(
+        f"/applications/{approved.id}/active",
+        json={"network": "manual"},
+    )
+    assert res_missing_link.status_code == 422
+
+
+def test_links_disabled_commit_error_repair_errors_and_retire(
+    client, db_session, make_program, monkeypatch
+):
+    import uuid
+
+    import httpx
+    from revenue_swarm.networks import PermanentNetworkError
+
+    # 1. Redirects disabled -> 404
+    monkeypatch.setattr(config, "LINK_REDIRECT_ENABLED", False)
+    assert client.get("/go/any-slug").status_code == 404
+    monkeypatch.setattr(config, "LINK_REDIRECT_ENABLED", True)
+
+    prog = make_program(
+        status="approved",
+        application_status="active",
+        network="manual",
+        affiliate_link="https://shop.test/ref?id=1",
+    )
+    link = AffiliateLink(
+        program_id=prog.id,
+        destination_url="https://shop.test/p",
+        tracking_url="https://shop.test/ref?id=1&subid=s2",
+        slug="err-slug",
+        subid="s2",
+        network="manual",
+        status=LinkStatus.ACTIVE.value,
+    )
+    db_session.add(link)
+    db_session.commit()
+
+    # 2. Click commit failure still redirects 302
+    orig_commit = db_session.commit
+    monkeypatch.setattr(
+        db_session,
+        "commit",
+        lambda: (_ for _ in ()).throw(RuntimeError("click db fail")),
+    )
+    res_redir = client.get("/go/err-slug", follow_redirects=False)
+    assert res_redir.status_code == 302
+    monkeypatch.setattr(db_session, "commit", orig_commit)
+
+    # 3. 404 for unknown link_id
+    assert (
+        client.patch(
+            f"/links/{uuid.uuid4()}",
+            json={"destination_url": "https://shop.test/x"},
+        ).status_code
+        == 404
+    )
+
+    # 4. PermanentNetworkError -> 422
+    class _PermFailNet:
+        def create_link(self, *_a, **_kw):
+            raise PermanentNetworkError("bad destination")
+
+    monkeypatch.setattr(
+        "app.api.links.network_for", lambda _net: _PermFailNet()
+    )
+    res_422 = client.patch(
+        f"/links/{link.id}",
+        json={"destination_url": "https://shop.test/x"},
+    )
+    assert res_422.status_code == 422
+
+    # 5. httpx.HTTPError -> 502
+    class _HttpFailNet:
+        def create_link(self, *_a, **_kw):
+            raise httpx.ConnectError("timeout")
+
+    monkeypatch.setattr(
+        "app.api.links.network_for", lambda _net: _HttpFailNet()
+    )
+    res_502 = client.patch(
+        f"/links/{link.id}",
+        json={"destination_url": "https://shop.test/x"},
+    )
+    assert res_502.status_code == 502
+
+    # 6. Retire link -> 200 and status=retired (lines 133-137)
+    res_retire = client.post(f"/links/{link.id}/retire")
+    assert res_retire.status_code == 200
+    assert res_retire.json()["status"] == LinkStatus.RETIRED.value

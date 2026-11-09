@@ -108,3 +108,62 @@ def test_decide_program_records_custom_or_default_actor():
     db.get.return_value = program2
     decide_program(db, program2.id, HitlDecisionValue.APPROVED, None)
     assert db.add.call_args[0][0].actor == HITL_ACTOR
+
+
+def test_decide_product_idea_errors_and_rejection():
+    from app.services.hitl import decide_product_idea
+    from revenue_swarm.enums import IdeaStatus
+    from revenue_swarm.models.product_idea import ProductIdea
+
+    db = MagicMock()
+    db.get.return_value = None
+    with pytest.raises(HTTPException) as exc_404:
+        decide_product_idea(db, uuid.uuid4(), HitlDecisionValue.APPROVED, None)
+    assert exc_404.value.status_code == 404
+
+    idea = ProductIdea(
+        id=uuid.uuid4(),
+        term="t",
+        title="Title",
+        kind="printable",
+        score=0.5,
+        status=IdeaStatus.APPROVED.value,
+    )
+    db.get.return_value = idea
+    with pytest.raises(HTTPException) as exc_409:
+        decide_product_idea(db, idea.id, HitlDecisionValue.APPROVED, None)
+    assert exc_409.value.status_code == 409
+
+    idea.status = IdeaStatus.PROPOSED.value
+    res = decide_product_idea(
+        db, idea.id, HitlDecisionValue.REJECTED, "no thanks"
+    )
+    assert res.status == IdeaStatus.REJECTED.value
+
+
+def test_decide_listing_errors_and_rejection():
+    from app.services.hitl import decide_listing
+    from revenue_swarm.enums import ListingStatus
+    from revenue_swarm.models.product_listing import ProductListing
+
+    db = MagicMock()
+    db.get.return_value = None
+    with pytest.raises(HTTPException) as exc_404:
+        decide_listing(db, uuid.uuid4(), HitlDecisionValue.APPROVED, None)
+    assert exc_404.value.status_code == 404
+
+    listing = ProductListing(
+        id=uuid.uuid4(),
+        product_id=uuid.uuid4(),
+        platform="shopify",
+        handle="h1",
+        status=ListingStatus.ACTIVE.value,
+    )
+    db.get.return_value = listing
+    with pytest.raises(HTTPException) as exc_409:
+        decide_listing(db, listing.id, HitlDecisionValue.APPROVED, None)
+    assert exc_409.value.status_code == 409
+
+    listing.status = ListingStatus.DRAFT.value
+    res = decide_listing(db, listing.id, HitlDecisionValue.REJECTED, "nah")
+    assert res.status == ListingStatus.ARCHIVED.value

@@ -477,3 +477,109 @@ def test_stripe_live_mode_requires_sk_live_key(db_session, monkeypatch):
         StripeProvider().create_checkout(
             product, "http://localhost:3000/ok", "http://localhost:3000/cancel"
         )
+
+
+def test_rate_limit_order_404_webhook_refund_and_download_edge_cases(
+    client, db_session, no_celery_broker, monkeypatch
+):
+    from unittest.mock import MagicMock
+
+    import app.api.checkout as checkout_api
+    import app.api.downloads as downloads_api
+
+    # 1. Test _too_fast directly on checkout and downloads
+    # Restore real _too_fast functions (overridden by autouse fixture)
+    monkeypatch.undo()
+
+    fake_redis = MagicMock()
+    fake_redis.incr.side_effect = [1, 15, 1, 15]
+    monkeypatch.setattr(
+        checkout_api.redis_lib, "from_url", lambda *_a, **_kw: fake_redis
+    )
+    monkeypatch.setattr(
+        downloads_api.redis_lib, "from_url", lambda *_a, **_kw: fake_redis
+    )
+    assert checkout_api._too_fast("k1", limit=10) is False
+    assert checkout_api._too_fast("k1", limit=10) is True
+    assert downloads_api._too_fast("k2", limit=10) is False
+    assert downloads_api._too_fast("k2", limit=10) is True
+    assert fake_redis.expire.call_count == 2
+
+    # Redis exception returns False
+    monkeypatch.setattr(
+        checkout_api.redis_lib,
+        "from_url",
+        MagicMock(side_effect=RuntimeError("redis down")),
+    )
+    monkeypatch.setattr(
+        downloads_api.redis_lib,
+        "from_url",
+        MagicMock(side_effect=RuntimeError("redis down")),
+    )
+    assert checkout_api._too_fast("k1") is False
+    assert downloads_api._too_fast("k2") is False
+
+    # 2. 429 on /checkout, GET /download/{token}, and POST /download/{token}
+    monkeypatch.setattr(config, "SALES_ENABLED", True)
+    monkeypatch.setattr(checkout_api, "_too_fast", lambda *_a, **_kw: True)
+    monkeypatch.setattr(downloads_api, "_too_fast", lambda *_a, **_kw: True)
+    assert client.post("/checkout", json={"slug": "guide"}).status_code == 429
+    assert client.get("/download/tok").status_code == 429
+    assert client.post("/download/tok").status_code == 429
+    monkeypatch.setattr(downloads_api, "_too_fast", lambda *_a, **_kw: False)
+
+    # 3. GET /orders/by-session/{session_id} -> 404 (orders.py line 26)
+    assert client.get("/orders/by-session/missing-session").status_code == 404
+
+    # 4. POST /webhooks/payments with refunded event -> queues SALES_REFUND
+    refund_body = json.dumps(
+        {"id": "evt_ref_api", "type": "refunded", "session_id": "s1"}
+    ).encode()
+    ref_res = client.post(
+        "/webhooks/payments", content=refund_body, headers=_fake_sig()
+    )
+    assert ref_res.status_code == 200
+    assert ref_res.json() == {"status": "accepted"}
+
+    # 5. _validate_grant edge cases: naive expires_at, missing order/asset_pdf
+    product_no_pdf = Product(
+        slug="no-pdf",
+        title="No PDF",
+        price_cents=1000,
+        currency="USD",
+        status=ProductStatus.LIVE.value,
+        asset_pdf=None,
+    )
+    db_session.add(product_no_pdf)
+    db_session.commit()
+    order = _pending_order(
+        db_session, product_no_pdf, session_id="sess_no_pdf"
+    )
+    token, _grant = create_grant(db_session, order)
+
+    # Asset not found -> 404
+    res_no_asset = client.get(f"/download/{token}")
+    assert res_no_asset.status_code == 404
+    assert res_no_asset.json()["detail"] == "Asset not found"
+
+    # Naive expires_at and Order not found
+    naive_grant = DownloadGrant(
+        order_id=order.id,
+        token_hash=downloads_api.sha256_hex("naive-tok"),
+        expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=1),
+        max_downloads=3,
+        downloads=0,
+        revoked=False,
+    )
+    orig_get = db_session.get
+
+    def _fake_get(model, ident):
+        if model is Order:
+            return None
+        return orig_get(model, ident)
+
+    monkeypatch.setattr(db_session, "scalar", lambda _stmt: naive_grant)
+    monkeypatch.setattr(db_session, "get", _fake_get)
+    res_no_order = client.get("/download/naive-tok")
+    assert res_no_order.status_code == 404
+    assert res_no_order.json()["detail"] == "Order not found"
