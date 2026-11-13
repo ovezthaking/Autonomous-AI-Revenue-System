@@ -53,3 +53,27 @@ def test_get_returns_object_bytes(monkeypatch):
     )
 
     assert storage.get("ebooks/test.pdf") == b"ebook-data"
+
+
+def test_ensure_bucket_reraises_non_404_and_put_accepts_metadata(monkeypatch):
+    import pytest
+
+    fake_s3 = MagicMock()
+    fake_s3.head_bucket.side_effect = ClientError(
+        {"Error": {"Code": "403", "Message": "Forbidden"}}, "HeadBucket"
+    )
+    monkeypatch.setattr(
+        "revenue_swarm.storage._client", lambda *, public=False: fake_s3
+    )
+
+    with pytest.raises(ClientError):
+        storage.ensure_bucket_exists()
+
+    storage.put(
+        "ebooks/test.pdf",
+        b"pdf-bytes",
+        "application/pdf",
+        metadata={"author": "swarm"},
+    )
+    call_kwargs = fake_s3.put_object.call_args.kwargs
+    assert call_kwargs["Metadata"] == {"author": "swarm"}

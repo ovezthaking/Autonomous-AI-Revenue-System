@@ -87,3 +87,92 @@ def test_generate_paragraph_propagates_http_errors(monkeypatch):
 
     with pytest.raises(httpx.HTTPStatusError):
         llm_module.generate_paragraph("prompt")
+
+
+def test_chat_and_rationale_and_copy(monkeypatch):
+    from unittest.mock import MagicMock
+
+    # Stub mode
+    monkeypatch.setattr(llm_module, "LLM_STUB", True)
+    assert llm_module.generate_rationale("p") == llm_module.STUB_RATIONALE
+    assert llm_module.generate_copy("p", stub="custom-stub") == "custom-stub"
+
+    # Non-stub mode
+    monkeypatch.setattr(llm_module, "LLM_STUB", False)
+    fake_msg = MagicMock()
+    fake_msg.content = "  chat response  "
+    fake_ollama = MagicMock()
+    fake_ollama.invoke.return_value = fake_msg
+    monkeypatch.setattr(llm_module, "ChatOllama", lambda **_kw: fake_ollama)
+
+    assert llm_module.chat("hello", temperature=0.3) == "chat response"
+    assert llm_module.generate_rationale("why?") == "chat response"
+    assert llm_module.generate_copy("write", stub="s") == "chat response"
+
+
+def test_chat_model_providers_structured_and_chat_with_usage(monkeypatch):
+    from unittest.mock import MagicMock
+
+    import langchain_anthropic
+    import langchain_ollama
+    from pydantic import BaseModel
+
+    class SampleSchema(BaseModel):
+        answer: str
+
+    # 1. _chat_model with anthropic vs ollama
+    fake_anthropic_cls = MagicMock(return_value="anthropic-instance")
+    fake_ollama_cls = MagicMock(return_value="ollama-instance")
+    monkeypatch.setattr(
+        langchain_anthropic, "ChatAnthropic", fake_anthropic_cls
+    )
+    monkeypatch.setattr(langchain_ollama, "ChatOllama", fake_ollama_cls)
+
+    monkeypatch.setattr(llm_module, "LLM_PROVIDER", "anthropic")
+    assert llm_module._chat_model(0.1) == "anthropic-instance"
+
+    monkeypatch.setattr(llm_module, "LLM_PROVIDER", "ollama")
+    assert llm_module._chat_model(0.1) == "ollama-instance"
+
+    # 2. structured: stub, valid schema, non-schema return, and exception
+    monkeypatch.setattr(llm_module, "LLM_STUB", True)
+    assert llm_module.structured("p", SampleSchema) is None
+
+    monkeypatch.setattr(llm_module, "LLM_STUB", False)
+    fake_structured_runner = MagicMock()
+    fake_base_model = MagicMock()
+    fake_base_model.with_structured_output.return_value = (
+        fake_structured_runner
+    )
+    monkeypatch.setattr(
+        llm_module, "_chat_model", lambda *_a, **_kw: fake_base_model
+    )
+
+    valid_obj = SampleSchema(answer="yes")
+    fake_structured_runner.invoke.return_value = valid_obj
+    assert llm_module.structured("p", SampleSchema) == valid_obj
+
+    fake_structured_runner.invoke.return_value = {"not": "model"}
+    assert llm_module.structured("p", SampleSchema) is None
+
+    fake_structured_runner.invoke.side_effect = RuntimeError("parse error")
+    assert llm_module.structured("p", SampleSchema) is None
+
+    # 3. chat_with_usage: stub, explicit total_tokens, and fallback estimate
+    monkeypatch.setattr(llm_module, "LLM_STUB", True)
+    assert llm_module.chat_with_usage("p") == (llm_module.STUB_TEXT, 0)
+
+    monkeypatch.setattr(llm_module, "LLM_STUB", False)
+    msg_with_usage = MagicMock()
+    msg_with_usage.content = "  hello world  "
+    msg_with_usage.usage_metadata = {"total_tokens": 42}
+    fake_base_model.invoke.return_value = msg_with_usage
+    assert llm_module.chat_with_usage("prompt") == ("hello world", 42)
+
+    msg_no_usage = MagicMock()
+    msg_no_usage.content = "abcd"
+    msg_no_usage.usage_metadata = {}
+    fake_base_model.invoke.return_value = msg_no_usage
+    text, tokens = llm_module.chat_with_usage("12345678")
+    assert text == "abcd"
+    assert tokens == (8 + 4) // 4
