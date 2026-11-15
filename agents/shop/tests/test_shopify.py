@@ -521,3 +521,261 @@ def test_sync_ebooks_skips_active_listings(db, monkeypatch):
     )
     assert l1 is not None and l1.status == ListingStatus.ACTIVE.value
     assert l2 is not None and l2.status == ListingStatus.DRAFT.value
+
+
+def test_shop_unit_and_helper_branches(tmp_path, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import shop_agent.build as build_mod
+    import shop_agent.platforms as platforms_mod
+    import shop_agent.previews as previews_mod
+    import shop_agent.shopify.graphql as gql_mod
+    import shop_agent.tasks as tasks_mod
+    import shop_agent.worker as worker_mod
+    from pypdf import PdfWriter
+
+    assert worker_mod.celery_app is not None
+
+    # 1. build.py non-stub path
+    monkeypatch.setattr(config, "LLM_STUB", False)
+    monkeypatch.setattr(
+        build_mod.shared_llm, "structured", lambda _p, _s: None
+    )
+    assert build_mod.structured("p", build_mod.PrintableSpec) is None
+
+    # 2. platforms/__init__.py shopify branch & FakeShopPlatform.activate
+    monkeypatch.setattr(config, "SHOP_PLATFORM", "shopify")
+    assert isinstance(platforms_mod.platform(), ShopifyPlatform)
+
+    fake_shop = FakeShopPlatform()
+    dummy_listing = ProductListing(
+        product_id=uuid.uuid4(),
+        platform="shopify",
+        handle="rs-test",
+        status=ListingStatus.DRAFT.value,
+    )
+    fake_shop.activate(dummy_listing)
+    assert fake_shop.products["rs-test"]["published"] is True
+
+    # 3. ShopifyPlatform: _add_to_vat_collection + activate
+    monkeypatch.setattr(
+        config, "SHOPIFY_VAT_COLLECTION_ID", "gid://shopify/Collection/1"
+    )
+    gql_calls: list[str] = []
+
+    def _mock_exec(q: str, _v: dict) -> dict:
+        gql_calls.append(q)
+        if "collectionAddProducts" in q:
+            return {"collectionAddProducts": {"collection": {"id": "c1"}}}
+        if "productUpdate" in q:
+            return {"productUpdate": {"product": {"id": "p1"}}}
+        return {"publishablePublish": {"publishable": {"id": "p1"}}}
+
+    monkeypatch.setattr("shop_agent.platforms.shopify.execute", _mock_exec)
+    from shop_agent.platforms.shopify import _add_to_vat_collection
+
+    _add_to_vat_collection("gid://shopify/Product/1")
+    ShopifyPlatform().activate(dummy_listing)
+    assert len(gql_calls) == 3
+
+    # 4. previews.py: preview_pngs and upload_preview
+    pdf_file = tmp_path / "sample.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    with pdf_file.open("wb") as fh:
+        writer.write(fh)
+    pngs = previews_mod.preview_pngs(pdf_file, limit=1)
+    assert len(pngs) == 1 and pngs[0].startswith(b"\x89PNG")
+
+    monkeypatch.setattr(
+        previews_mod,
+        "execute",
+        lambda _q, _v: {
+            "stagedUploadsCreate": {
+                "stagedTargets": [
+                    {
+                        "url": "https://upload.test",
+                        "resourceUrl": "https://cdn.test/img.png",
+                        "parameters": [{"name": "key", "value": "val"}],
+                    }
+                ]
+            }
+        },
+    )
+    monkeypatch.setattr(previews_mod.httpx, "post", lambda *_a, **_kw: None)
+    assert (
+        previews_mod.upload_preview(b"png", "p.png")
+        == "https://cdn.test/img.png"
+    )
+
+    # 5. shopify/auth.py edge cases
+    assert shopify_auth._decode("plain") == "plain"
+    fake_redis = _FakeRedis()
+    get_vals = [None, b"locked_tok"]
+    fake_redis.get = lambda _k: get_vals.pop(0)  # type: ignore[method-assign]
+    monkeypatch.setattr(shopify_auth, "redis_client", fake_redis)
+    assert shopify_auth.access_token() == "locked_tok"
+    shopify_auth.invalidate_token()
+
+    # 6. shopify/graphql.py edge cases
+    monkeypatch.setattr(
+        gql_mod, "_post", lambda _q, _v: httpx.Response(401, json={})
+    )
+    with pytest.raises(PermanentError):
+        gql_mod.execute("q", {})
+
+    monkeypatch.setattr(
+        gql_mod, "_post", lambda _q, _v: httpx.Response(502, json={})
+    )
+    with pytest.raises(TransientError):
+        gql_mod.execute("q", {})
+
+    slept: list[int] = []
+    monkeypatch.setattr(gql_mod.time, "sleep", lambda s: slept.append(s))
+    gql_mod._respect_cost({"throttleStatus": {"currentlyAvailable": 50}})
+    assert slept == [1]
+
+    # 7. tasks.py pure helpers
+    assert tasks_mod._listing_by_variant(MagicMock(), "") is None
+    assert (
+        tasks_mod._variant_gid({"variant_id": 12})
+        == "gid://shopify/ProductVariant/12"
+    )
+    assert tasks_mod._variant_gid({}) == ""
+    assert tasks_mod._line_gid({"id": 34}) == "gid://shopify/LineItem/34"
+    assert tasks_mod._line_gid({}) == ""
+    assert tasks_mod._line_amount_cents({}, 500) == 500
+    assert tasks_mod._line_amount_cents({"price": "not-a-num"}, 500) == 500
+    assert tasks_mod._refund_order_gid({"order_gid": "gid://1"}) == "gid://1"
+    assert (
+        tasks_mod._refund_order_gid({"order_id": "gid://shopify/Order/9"})
+        == "gid://shopify/Order/9"
+    )
+    assert (
+        tasks_mod._refund_order_gid(
+            {"admin_graphql_api_id": "gid://shopify/Order/8"}
+        )
+        == "gid://shopify/Order/8"
+    )
+    assert tasks_mod._refund_session_ids(
+        "gid://shopify/Order/1",
+        {
+            "refund_line_items": [
+                "not-a-dict",
+                {
+                    "line_item": {
+                        "admin_graphql_api_id": "gid://shopify/LineItem/10"
+                    }
+                },
+                {"line_item_id": 20},
+            ]
+        },
+    ) == [
+        "gid://shopify/Order/1:gid://shopify/LineItem/10",
+        "gid://shopify/Order/1:gid://shopify/LineItem/20",
+    ]
+
+
+@pytest.mark.integration
+def test_shop_tasks_remaining_db_branches(db, monkeypatch):
+    import shop_agent.tasks as tasks_mod
+    from revenue_swarm.enums import IdeaStatus, ProductKind
+    from revenue_swarm.models.product_idea import ProductIdea
+
+    # 1. _get_or_create_order IntegrityError race fallback
+    prod = _product()
+    prod.status = ProductStatus.DRAFT.value
+    db.add(prod)
+    db.commit()
+
+    ord_existing = tasks_mod._get_or_create_order(
+        db, "shopify", "sess_race_1", prod.id, "a@b.c"
+    )
+
+    orig_scalar = db.scalar
+    scalar_calls = {"n": 0}
+
+    def _race_scalar(stmt, *a, **kw):
+        scalar_calls["n"] += 1
+        if scalar_calls["n"] == 1:
+            return None
+        return orig_scalar(stmt, *a, **kw)
+
+    with monkeypatch.context() as m:
+        m.setattr(db, "scalar", _race_scalar)
+        recovered = tasks_mod._get_or_create_order(
+            db, "shopify", "sess_race_1", prod.id, "a@b.c"
+        )
+        assert recovered.id == ord_existing.id
+
+    # 2. shop_fulfill_task & shop_refund_task edge cases
+    assert shop_fulfill_task("no_such_wh") == {"delivered": 0}
+    assert shop_refund_task("no_such_wh") == {"refunded": 0}
+
+    ev_no_gid = PaymentEvent(
+        provider="shopify",
+        event_id="wh_no_gid",
+        event_type="orders/paid",
+        payload={},
+    )
+    ev_ref_lines = PaymentEvent(
+        provider="shopify",
+        event_id="wh_ref_lines",
+        event_type="refunds/create",
+        payload={
+            "order_gid": "gid://shopify/Order/999",
+            "refund_line_items": [{"line_item_id": 111}],
+        },
+    )
+    db.add_all([ev_no_gid, ev_ref_lines])
+    db.commit()
+    assert shop_fulfill_task("wh_no_gid") == {"delivered": 0}
+    assert shop_refund_task("wh_ref_lines") == {"refunded": 0}
+
+    # 3. sync_ebooks_task disabled & daily cap break
+    with monkeypatch.context() as m:
+        m.setattr(tasks_mod, "SHOP_ENABLED", False)
+        m.setattr(config, "SHOP_ENABLED", False)
+        assert sync_ebooks_task() == {"listed": 0}
+
+    p_live = _product()
+    db.add(p_live)
+    db.commit()
+    with monkeypatch.context() as m:
+        m.setattr(tasks_mod, "SHOP_ENABLED", True)
+        m.setattr(tasks_mod, "SHOP_MAX_NEW_LISTINGS_PER_DAY", 0)
+        assert sync_ebooks_task() == {"listed": 0}
+
+    # 4. list_task not_found & activate_task not_found + success
+    assert tasks_mod.list_task(str(uuid.uuid4())) == {"status": "not_found"}
+    assert tasks_mod.activate_task(str(uuid.uuid4())) == {
+        "status": "not_found"
+    }
+
+    listed = tasks_mod.list_task(str(prod.id))
+    act = tasks_mod.activate_task(listed["listing_id"])
+    assert act == {"status": ListingStatus.ACTIVE.value}
+    db.refresh(prod)
+    assert prod.status == ProductStatus.LIVE.value
+
+    # 5. build_task idea_not_found & structured None error
+    assert tasks_mod.build_task(str(uuid.uuid4())) == {
+        "status": "idea_not_found"
+    }
+
+    idea = ProductIdea(
+        term="planner printable",
+        title="Planner",
+        kind=ProductKind.PRINTABLE.value,
+        score=0.8,
+        score_breakdown={},
+        status=IdeaStatus.APPROVED.value,
+    )
+    db.add(idea)
+    db.commit()
+    with (
+        monkeypatch.context() as m,
+        pytest.raises(RuntimeError, match="returned None"),
+    ):
+        m.setattr(tasks_mod, "structured", lambda *_a: None)
+        tasks_mod.build_task(str(idea.id))

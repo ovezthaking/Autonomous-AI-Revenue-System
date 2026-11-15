@@ -410,3 +410,72 @@ def test_real_pandoc_builds_a_readable_pdf_and_epub(tmp_path):
 
     assert len(PdfReader(str(pdf_path)).pages) >= len(chapters)
     assert zipfile.is_zipfile(epub_path)
+
+
+@pytest.mark.integration
+def test_ebook_edge_cases_and_worker(db, monkeypatch):
+    import uuid
+
+    import ebook_agent.worker as worker_mod
+    from celery.exceptions import SoftTimeLimitExceeded
+
+    assert worker_mod.celery_app is not None
+
+    # 1. propose_topics_task disabled and LLM_STUB fallback
+    monkeypatch.setattr("ebook_agent.tasks.EBOOK_ENABLED", False)
+    assert propose_topics_task("ai") == {"created": 0}
+
+    monkeypatch.setattr("ebook_agent.tasks.EBOOK_ENABLED", True)
+    monkeypatch.setattr("ebook_agent.tasks.LLM_STUB", True)
+    with patch("ebook_agent.tasks.structured", return_value=None):
+        assert propose_topics_task("ai") == {"created": 1}
+
+    # 2. outline_task edge cases: missing product, wrong status, stub, empty
+    assert outline_task(str(uuid.uuid4())) == {"chapters": 0}
+
+    prod_live = Product(
+        slug="live-book",
+        title="Live",
+        price_cents=1900,
+        status=ProductStatus.LIVE.value,
+    )
+    db.add(prod_live)
+    db.commit()
+    assert outline_task(str(prod_live.id)) == {"chapters": 0}
+
+    prod_empty = Product(
+        slug="empty-outline",
+        title="Empty",
+        price_cents=1900,
+        status=ProductStatus.OUTLINING.value,
+    )
+    db.add(prod_empty)
+    db.commit()
+    monkeypatch.setattr("ebook_agent.tasks.LLM_STUB", False)
+    with patch("ebook_agent.tasks.structured", return_value=None):
+        assert outline_task(str(prod_empty.id)) == {"chapters": 0}
+    db.refresh(prod_empty)
+    assert prod_empty.status == ProductStatus.DRAFT.value
+
+    monkeypatch.setattr("ebook_agent.tasks.LLM_STUB", True)
+    with patch("ebook_agent.tasks.structured", return_value=None):
+        assert outline_task(str(prod_empty.id)) == {"chapters": 3}
+
+    # 3. write_task skipped and SoftTimeLimitExceeded
+    assert write_task(str(uuid.uuid4())) == {"status": "skipped"}
+    assert write_task(str(prod_live.id)) == {"status": "skipped"}
+
+    with (
+        patch(
+            "ebook_agent.tasks.write_chapter",
+            side_effect=SoftTimeLimitExceeded(),
+        ),
+        pytest.raises(SoftTimeLimitExceeded),
+    ):
+        write_task(str(prod_empty.id))
+
+    # 4. assemble_task not_found and chapters_incomplete
+    assert assemble_task(str(uuid.uuid4())) == {"status": "not_found"}
+    assert assemble_task(str(prod_empty.id)) == {
+        "status": "chapters_incomplete"
+    }

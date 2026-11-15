@@ -1,5 +1,12 @@
 """Shop agent test fixtures."""
 
+import sys
+from pathlib import Path
+
+_BACKEND = str(Path(__file__).resolve().parents[3] / "backend")
+if _BACKEND not in sys.path:
+    sys.path.insert(0, _BACKEND)
+
 pytest_plugins = ["revenue_swarm.testing.fixtures"]
 
 from collections.abc import Generator  # noqa: E402

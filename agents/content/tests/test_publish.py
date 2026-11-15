@@ -114,3 +114,157 @@ def test_status_mapping():
         raise_for_status(limited)
     with pytest.raises(UnknownOutcomeError):
         raise_for_transport(httpx.ReadTimeout("late"))
+    raise_for_status(httpx.Response(200, text="ok"))
+    with pytest.raises(UnknownOutcomeError):
+        raise_for_status(httpx.Response(500, text="err"))
+    with pytest.raises(TransientError):
+        raise_for_transport(httpx.ConnectError("conn"))
+    with pytest.raises(UnknownOutcomeError):
+        raise_for_transport(httpx.HTTPError("other"))
+
+
+def test_adapters_and_additional_branches(db, item, publication, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import content_agent.worker as worker_mod
+    from content_agent.publish.dryrun import DryRunTarget
+    from content_agent.publish.mastodon import MastodonTarget
+    from content_agent.publish.wordpress import WordPressTarget
+    from content_agent.publish.x import XTarget
+    from content_agent.tasks import _deliver
+    from content_agent.templates import AMAZON_DISCLOSURE, render_blog
+
+    assert worker_mod.celery_app is not None
+    assert AMAZON_DISCLOSURE in render_blog(
+        "Body", "Book", "https://a.co", network="amazon"
+    )
+    assert "#ad" in ensure_social_disclosure("no link body", 280)
+    DryRunTarget().retract("dryrun-1")
+
+    # reserve additional branches: in_flight, needs_review, retryable=False
+    publication.status = "in_flight"
+    assert reserve(db, item, publication.target) is None
+    assert publication.status == "needs_review"
+
+    assert reserve(db, item, publication.target) is None
+
+    publication.status = "failed"
+    publication.payload = {"retryable": False}
+    assert reserve(db, item, publication.target) is None
+
+    # may_publish outside window
+    monkeypatch.setattr("content_agent.tasks.PUBLISH_ENABLED", True)
+    monkeypatch.setattr(
+        "content_agent.tasks._has_hitl_approval", lambda _d, _i: True
+    )
+    monkeypatch.setattr("content_agent.tasks._within_window", lambda _n: False)
+    item.status = "scheduled"
+    item.scheduled_for = datetime.now(UTC) - timedelta(minutes=1)
+    assert may_publish(db, item) == "outside publishing window"
+
+    # _deliver error branches
+    class _ErrTarget:
+        name = "dryrun"
+
+        def __init__(self, exc):
+            self.exc = exc
+
+        def publish(self, _item):
+            raise self.exc
+
+        def retract(self, _ext):
+            return None
+
+    assert (
+        _deliver(db, item, publication, _ErrTarget(TransientError("t")))
+        == "failed"
+    )
+    assert publication.payload["retryable"] is True
+    assert (
+        _deliver(db, item, publication, _ErrTarget(UnknownOutcomeError("u")))
+        == "needs_review"
+    )
+    assert publication.status == "needs_review"
+    assert (
+        _deliver(db, item, publication, _ErrTarget(PermanentError("p")))
+        == "failed"
+    )
+    assert publication.payload["retryable"] is False
+
+    # MastodonTarget, XTarget, WordPressTarget success + HTTPError branches
+    fake_client = MagicMock()
+    fake_client.__enter__.return_value = fake_client
+    fake_client.__exit__.return_value = False
+
+    # Mastodon
+    fake_client.post.return_value = httpx.Response(
+        200, json={"id": "m1", "url": "https://m.to/1"}
+    )
+    fake_client.delete.return_value = httpx.Response(200, json={})
+    monkeypatch.setattr(
+        "content_agent.publish.mastodon.httpx.Client",
+        lambda **_kw: fake_client,
+    )
+    m_res = MastodonTarget().publish(item)
+    assert m_res.external_id == "m1"
+    MastodonTarget().retract("m1")
+
+    fake_client.post.side_effect = httpx.ConnectError("m_conn")
+    fake_client.delete.side_effect = httpx.ConnectError("m_del")
+    with pytest.raises(TransientError):
+        MastodonTarget().publish(item)
+    with pytest.raises(TransientError):
+        MastodonTarget().retract("m1")
+    fake_client.post.side_effect = None
+    fake_client.delete.side_effect = None
+
+    # XTarget
+    fake_client.post.return_value = httpx.Response(
+        200, json={"data": {"id": "x1"}}
+    )
+    monkeypatch.setattr(
+        "content_agent.publish.x.httpx.Client", lambda **_kw: fake_client
+    )
+    x_res = XTarget().publish(item)
+    assert x_res.external_id == "x1"
+    XTarget().retract("x1")
+
+    fake_client.post.side_effect = httpx.ConnectError("x_conn")
+    with pytest.raises(TransientError):
+        XTarget().publish(item)
+    with pytest.raises(TransientError):
+        XTarget().retract("x1")
+    fake_client.post.side_effect = None
+
+    # WordPressTarget
+    monkeypatch.setattr(
+        "content_agent.publish.wordpress.httpx.Client",
+        lambda **_kw: fake_client,
+    )
+    # 1) Reconciled existing slug
+    fake_client.get.return_value = httpx.Response(
+        200, json=[{"id": 77, "link": "https://wp.test/p/77"}]
+    )
+    wp_reconciled = WordPressTarget().publish(item)
+    assert wp_reconciled.external_id == "77"
+
+    # 2) Not found by slug -> creates new post
+    fake_client.get.return_value = httpx.Response(200, json=[])
+    fake_client.post.return_value = httpx.Response(
+        201, json={"id": 88, "link": "https://wp.test/p/88"}
+    )
+    wp_created = WordPressTarget().publish(item)
+    assert wp_created.external_id == "88"
+    WordPressTarget().retract("88")
+
+    # 3) Transport errors in _find_by_slug, _post, retract
+    fake_client.get.side_effect = httpx.ConnectError("wp_get")
+    with pytest.raises(TransientError):
+        WordPressTarget().publish(item)
+    fake_client.get.side_effect = None
+    fake_client.get.return_value = httpx.Response(200, json=[])
+    fake_client.post.side_effect = httpx.ConnectError("wp_post")
+    with pytest.raises(TransientError):
+        WordPressTarget().publish(item)
+    with pytest.raises(TransientError):
+        WordPressTarget().retract("88")

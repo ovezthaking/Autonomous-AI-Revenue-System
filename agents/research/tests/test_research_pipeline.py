@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import cast
 
 import httpx
+import pytest
 import research_agent.agent as agent_module
 import research_agent.extract as extract_module
 import research_agent.search as search_module
@@ -17,6 +18,7 @@ from research_agent.search import (
     search,
 )
 from research_agent.validate import is_usable, looks_like_program_url
+from revenue_swarm.models.affiliate_program import AffiliateProgram
 from sqlalchemy.orm import Session
 
 _ORIGINAL_SEND = httpx.Client.send
@@ -437,3 +439,338 @@ def test_discover_rejects_a_blocked_url_without_calling_the_model(monkeypatch):
     errors = result["errors"]
     assert isinstance(errors, list)
     assert errors[0]["error"] == "rejected"
+
+
+def test_research_unit_branches(monkeypatch):
+    import httpx
+    import research_agent.fetch as fetch_mod
+    import research_agent.polite as polite_mod
+    import research_agent.probe as probe_mod
+    import research_agent.search as search_mod
+    import research_agent.worker as worker_mod
+
+    assert worker_mod.celery_app is not None
+
+    # 1. agent.py: _request_cards error, _host(""), discover_programs_v2 errors
+    monkeypatch.setattr(
+        agent_module.celery_app,
+        "send_task",
+        lambda *_a, **_kw: (_ for _ in ()).throw(RuntimeError("celery down")),
+    )
+    dummy_prog = AffiliateProgram(name="P", network="awin")
+    agent_module._request_cards([dummy_prog])
+    assert agent_module._host(None) == ""
+
+    monkeypatch.setattr(
+        agent_module,
+        "search",
+        lambda _n: [
+            SearchHit(
+                url="https://v1.test/affiliate-program",
+                title="V1",
+                raw_content="",
+            ),
+            SearchHit(
+                url="https://v2.test/affiliate-program",
+                title="V2",
+                raw_content="text",
+            ),
+        ],
+    )
+    monkeypatch.setattr(agent_module, "fetch_text", lambda _u: None)
+    monkeypatch.setattr(
+        agent_module,
+        "extract_facts",
+        lambda *_a: (_ for _ in ()).throw(RuntimeError("parse fail")),
+    )
+
+    class _Rows:
+        def all(self):
+            return []
+
+    class _DB:
+        def execute(self, _stmt):
+            return _Rows()
+
+        def commit(self):
+            return None
+
+    res = discover_programs_v2(cast(Session, _DB()), uuid.uuid4())
+    assert len(res["errors"]) == 2
+
+    # 2. extract.py edge cases
+    assert extract_module._parse_stub_network("nothing", None) is None
+    assert extract_module._parse_stub_commission(None, None, "nothing") == (
+        "unknown",
+        None,
+    )
+    assert extract_module._stated_cookie_days("999 days cookie") is None
+
+    # 3. fetch.py edge cases
+    monkeypatch.setattr(fetch_mod, "RESPECT_ROBOTS", False)
+    assert fetch_mod.allowed_by_robots("https://ex.test/p") is True
+
+    monkeypatch.setattr(fetch_mod, "RESPECT_ROBOTS", True)
+    monkeypatch.setattr(fetch_mod, "pace", lambda _u: None)
+    monkeypatch.setattr(
+        fetch_mod.robotparser.RobotFileParser,
+        "read",
+        lambda _self: (_ for _ in ()).throw(OSError("net")),
+    )
+    assert fetch_mod.allowed_by_robots("https://ex.test/p") is True
+
+    class _NoBodyTree:
+        body = None
+
+        def css(self, _sel):
+            return []
+
+    with monkeypatch.context() as m:
+        m.setattr(fetch_mod, "HTMLParser", lambda _h: _NoBodyTree())
+        assert fetch_mod.page_text("<html></html>") is None
+
+    monkeypatch.setattr(fetch_mod._redis, "get", lambda _k: "cached text")
+    assert fetch_mod.fetch_text("https://ex.test/1") == "cached text"
+
+    monkeypatch.setattr(fetch_mod._redis, "get", lambda _k: None)
+    monkeypatch.setattr(fetch_mod, "allowed_by_robots", lambda _u: False)
+    assert fetch_mod.fetch_text("https://ex.test/2") is None
+
+    monkeypatch.setattr(fetch_mod, "allowed_by_robots", lambda _u: True)
+    monkeypatch.setattr(
+        fetch_mod, "send", lambda _u, _fn: httpx.Response(200, text="hi")
+    )
+    monkeypatch.setattr(fetch_mod, "page_text", lambda _h: None)
+    assert fetch_mod.fetch_text("https://ex.test/3") is None
+
+    # 4. polite.py: pace("") and send() with 0 attempts
+    polite_mod.pace("")
+    with monkeypatch.context() as m:
+        m.setattr(polite_mod, "Retrying", lambda **_kw: [])
+        with pytest.raises(RuntimeError, match="without a response"):
+            polite_mod.send("https://ex.test", lambda: httpx.Response(200))
+
+    # 5. probe.py edge cases
+    monkeypatch.setattr(httpx.Client, "send", _ORIGINAL_SEND)
+    probe_mod.pace_host("")
+    monkeypatch.setattr(probe_mod.time, "sleep", lambda _w: None)
+    probe_mod._last_host["ex.test"] = probe_mod.time.monotonic() + 5.0
+    probe_mod.pace_host("ex.test")
+    assert probe_mod._same_site("", "ex.test") is True
+
+    def _handler_405(request: httpx.Request) -> httpx.Response:
+        if request.method == "HEAD":
+            return httpx.Response(405)
+        return httpx.Response(200)
+
+    v_ok = probe_mod.probe(
+        "https://ex.test/p", transport=httpx.MockTransport(_handler_405)
+    )
+    assert v_ok.is_broken is False
+
+    def _handler_timeout(_req: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timeout")
+
+    v_to = probe_mod.probe(
+        "https://ex.test/p", transport=httpx.MockTransport(_handler_timeout)
+    )
+    assert v_to == probe_mod.ProbeVerdict(True, "five timeouts")
+
+    v_403 = probe_mod.probe(
+        "https://ex.test/p",
+        transport=httpx.MockTransport(lambda _r: httpx.Response(403)),
+    )
+    assert v_403 == probe_mod.ProbeVerdict(True, "403")
+
+    v_502 = probe_mod.probe(
+        "https://ex.test/p",
+        transport=httpx.MockTransport(lambda _r: httpx.Response(502)),
+    )
+    assert v_502 == probe_mod.ProbeVerdict(False, "transient 502")
+
+    v_left = probe_mod.probe(
+        "https://ex.test/p",
+        destination_url="https://other.test/p",
+        transport=httpx.MockTransport(lambda _r: httpx.Response(200)),
+    )
+    assert v_left == probe_mod.ProbeVerdict(True, "left advertiser host")
+
+    # 6. search.py: tavily, brave, unknown provider
+    monkeypatch.setattr(search_mod, "SEARCH_STUB", False)
+    monkeypatch.setattr(search_mod, "_tavily", lambda _q: [])
+    monkeypatch.setattr(search_mod, "_brave", lambda _q: [])
+
+    monkeypatch.setattr(search_mod, "SEARCH_PROVIDER", "tavily")
+    assert search_mod.search("saas") == []
+
+    monkeypatch.setattr(search_mod, "SEARCH_PROVIDER", "brave")
+    assert search_mod.search("saas") == []
+
+    monkeypatch.setattr(search_mod, "SEARCH_PROVIDER", "bing")
+    with pytest.raises(ValueError, match="Unknown SEARCH_PROVIDER"):
+        search_mod.search("saas")
+
+    # 7. validate.py edge cases
+    assert (
+        is_usable(
+            ProgramFacts(
+                program_name="X",
+                commission_type="unknown",
+                commission_value=None,
+                confidence=0.9,
+            ),
+            "https://x.test/affiliates",
+        )
+        is False
+    )
+    assert (
+        is_usable(
+            ProgramFacts(
+                program_name="X",
+                commission_type="flat_one_time",
+                commission_value=500_000.0,
+                confidence=0.9,
+            ),
+            "https://x.test/affiliates",
+        )
+        is False
+    )
+    assert (
+        is_usable(
+            ProgramFacts(
+                program_name="   ",
+                commission_type="percent_recurring",
+                commission_value=20.0,
+                confidence=0.9,
+            ),
+            "https://x.test/affiliates",
+        )
+        is False
+    )
+
+
+@pytest.mark.integration
+def test_research_tasks_and_db_branches(real_session, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    import research_agent.tasks as tasks_mod
+    from revenue_swarm import config
+    from revenue_swarm.enums import LinkStatus, ProgramStatus
+    from revenue_swarm.models.affiliate_link import AffiliateLink
+    from revenue_swarm.models.content_item import ContentItem
+    from revenue_swarm.models.task import AgentTask
+
+    # 1. discover_programs_task (catalog & web)
+    t1 = AgentTask(
+        type="discover_programs", status="pending", input={"limit": 1}
+    )
+    t2 = AgentTask(
+        type="discover_programs", status="pending", input={"limit": 1}
+    )
+    real_session.add_all([t1, t2])
+    real_session.commit()
+
+    monkeypatch.setattr(
+        tasks_mod, "discover_programs_v1", lambda *_a: {"created": 0}
+    )
+    monkeypatch.setattr(
+        tasks_mod, "discover_programs_v2", lambda *_a: {"created": 0}
+    )
+
+    monkeypatch.setattr(tasks_mod, "RESEARCH_SOURCE", "catalog")
+    tasks_mod.discover_programs_task.run(str(t1.id))
+
+    monkeypatch.setattr(tasks_mod, "RESEARCH_SOURCE", "web")
+    tasks_mod.discover_programs_task.run(str(t2.id))
+
+    # 2. rescore_proposed invalid facts + rescore_task
+    bad_prog = AffiliateProgram(
+        name="BadFacts",
+        network="awin",
+        status=ProgramStatus.PROPOSED.value,
+        extras={"facts": {"confidence": "not-a-float"}},
+    )
+    real_session.add(bad_prog)
+    real_session.commit()
+    assert tasks_mod.rescore_task.run() == 0
+
+    # 3. _resolve_program_id: None and UUID fallback
+    assert tasks_mod._resolve_program_id(real_session, "awin", None) is None
+    assert (
+        tasks_mod._resolve_program_id(real_session, "awin", str(bad_prog.id))
+        == bad_prog.id
+    )
+
+    # 4. sync_performance_task & check_pending_task
+    monkeypatch.setattr(tasks_mod, "active_networks", lambda: [])
+    assert tasks_mod.sync_performance_task.run() == {"rows": 0}
+    assert tasks_mod.check_pending_task.run() == {"reminders": 0}
+
+    # 5. _flag_for_review, check_links disabled, silent links, check_links_task
+    orphan_link = AffiliateLink(
+        program_id=bad_prog.id,
+        slug="orph1",
+        subid="s1",
+        network="awin",
+        destination_url="https://ex.test",
+        tracking_url="https://ex.test",
+        status=LinkStatus.ACTIVE.value,
+        content_item_id=None,
+    )
+    missing_ci_link = AffiliateLink(
+        program_id=bad_prog.id,
+        slug="orph2",
+        subid="s2",
+        network="awin",
+        destination_url="https://ex.test",
+        tracking_url="https://ex.test",
+        status=LinkStatus.ACTIVE.value,
+        content_item_id=uuid.uuid4(),
+    )
+    tasks_mod._flag_for_review(real_session, orphan_link, "404")
+    tasks_mod._flag_for_review(real_session, missing_ci_link, "404")
+
+    with monkeypatch.context() as m:
+        m.setattr(config, "LINK_CHECK_ENABLED", False)
+        assert tasks_mod.check_links(real_session) == {"checked": 0}
+
+    ci = ContentItem(
+        title="Silent Item", body="Body", channel="blog", status="published"
+    )
+    real_session.add(ci)
+    real_session.commit()
+
+    old_time = datetime.now(UTC) - timedelta(days=40)
+    silent_no_ci = AffiliateLink(
+        program_id=bad_prog.id,
+        slug="sil1",
+        subid="sil1",
+        network="awin",
+        destination_url="https://ex.test/1",
+        tracking_url="https://ex.test/1",
+        status=LinkStatus.ACTIVE.value,
+        content_item_id=None,
+        created_at=old_time,
+        last_checked_at=datetime.now(UTC),
+    )
+    silent_with_ci = AffiliateLink(
+        program_id=bad_prog.id,
+        slug="sil2",
+        subid="sil2",
+        network="awin",
+        destination_url="https://ex.test/2",
+        tracking_url="https://ex.test/2",
+        status=LinkStatus.ACTIVE.value,
+        content_item_id=ci.id,
+        created_at=old_time,
+        last_checked_at=datetime.now(UTC),
+    )
+    real_session.add_all([silent_no_ci, silent_with_ci])
+    real_session.commit()
+
+    res_links = tasks_mod.check_links_task.run()
+    assert res_links["checked"] == 0
+    real_session.expire_all()
+    assert (
+        real_session.get(ContentItem, ci.id).extras.get("link_unseen") is True
+    )
