@@ -14,7 +14,6 @@ const makeTask = (overrides: Partial<AgentTask> = {}): AgentTask => ({
   id: "task-1",
   type: "research_programs",
   status: "succeeded",
-  attempts: 1,
   output: null,
   error: null,
   created_at: "2026-11-01T00:00:00Z",
@@ -37,6 +36,7 @@ const makeRecommendation = (
   applied_at: null,
   affiliate_link: null,
   extras: null,
+  created_at: "2026-11-01T00:00:00Z",
   ...overrides,
 });
 
@@ -107,11 +107,11 @@ describe("formatters", () => {
     it("formats breakdown entries joined by middle dot", () => {
       const rec = makeRecommendation({
         extras: {
-          score_breakdown: { commission: 40, cookie: 20, network: "direct" },
+          score_breakdown: { commission: 40, cookie: 20, network: 10 },
         },
       });
       expect(breakdownLabel(rec)).toBe(
-        "commission 40 · cookie 20 · network direct",
+        "commission 40 · cookie 20 · network 10",
       );
     });
   });
